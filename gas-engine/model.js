@@ -1,4 +1,4 @@
-// Real engine model — Khronos glTF sample 2CylinderEngine.
+// Real engine model — Khronos glTF sample 2CylinderEngine, with fallback.
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
@@ -16,33 +16,44 @@ export function build(scene, onLoaded) {
   g.name = "gas-engine";
   scene.add(g);
 
+  // Immediate fallback so something is always clickable
+  const fallback = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 0.8, 0.8),
+    new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.6, roughness: 0.4 })
+  );
+  fallback.position.y = 0.2;
+  fallback.userData = { id: "engine" };
+  g.add(fallback);
+
   const loader = new GLTFLoader();
   loader.load(
     "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/2CylinderEngine/glTF-Binary/2CylinderEngine.glb",
     (gltf) => {
       const model = gltf.scene;
       model.scale.setScalar(0.008);
-      model.position.set(0, -0.5, 0);
+      model.position.set(0, -0.4, 0);
 
-      // Assign pickable ids. For now the whole model is one target;
-      // later we can map individual named meshes.
       model.traverse(child => {
         if (child.isMesh) {
-          child.userData.id = "engine";
+          child.userData = { id: "engine" };
           child.castShadow = true;
           child.receiveShadow = true;
         }
       });
 
+      g.remove(fallback);
       g.add(model);
       if (onLoaded) onLoaded(g);
     },
     undefined,
     (err) => {
-      console.error("GLB load failed", err);
+      console.error("GLB load failed, keeping fallback", err);
       if (onLoaded) onLoaded(g);
     }
   );
+
+  // Call onLoaded immediately so the fallback is pickable right away
+  setTimeout(() => { if (onLoaded) onLoaded(g); }, 100);
 
   return g;
 }
