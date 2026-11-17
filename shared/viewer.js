@@ -1,4 +1,4 @@
-// CAD-style 3D viewer with reliable click picking.
+// CAD-style 3D viewer with reliable click picking and hide/show.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
@@ -21,6 +21,7 @@ export class Viewer {
     this.pointer = new THREE.Vector2();
     this.pickables = [];
     this.onPick = () => {};
+    this.selected = null;
 
     this._downPos = null;
     this._setupLights();
@@ -77,13 +78,15 @@ export class Viewer {
       const dy = e.clientY - this._downPos.y;
       const moved = Math.hypot(dx, dy);
       this._downPos = null;
-      if (moved > 6) return; // was a drag, not a click
+      if (moved > 6) return;
       this._onPointer(e);
     });
     canvas.addEventListener("dblclick", () => this.fit(this.scene));
     window.addEventListener("keydown", e => {
       if (e.key === "f" || e.key === "F") this.fit(this.scene);
       if (e.key === "l" || e.key === "L") this.toggleLayers();
+      if (e.key === "h" || e.key === "H") this.hideSelected();
+      if (e.key === "r" || e.key === "R") this.showAll();
     });
   }
 
@@ -97,6 +100,7 @@ export class Viewer {
       let obj = hits[0].object;
       while (obj && !(obj.userData && obj.userData.id)) obj = obj.parent;
       if (obj && obj.userData && obj.userData.id) {
+        this.selected = obj;
         this.onPick(obj.userData.id, obj);
       }
     }
@@ -105,6 +109,19 @@ export class Viewer {
   toggleLayers() {
     this.scene.traverse(obj => {
       if (obj.userData && obj.userData.layer === "outer") obj.visible = !obj.visible;
+    });
+  }
+
+  hideSelected() {
+    if (this.selected) {
+      this.selected.visible = false;
+      this.selected = null;
+    }
+  }
+
+  showAll() {
+    this.scene.traverse(obj => {
+      if (obj.isMesh) obj.visible = true;
     });
   }
 
