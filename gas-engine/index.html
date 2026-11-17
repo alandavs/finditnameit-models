@@ -40,8 +40,8 @@
   <a class="chip nav" href="../index.html">← Library</a>
 </header>
 <section class="card" id="card">
-  <div class="prompt" id="prompt">Loading real engine model…</div>
-  <div class="sub" id="sub"></div>
+  <div class="prompt" id="prompt">Loading real engine…</div>
+  <div class="sub" id="sub">Fetching GLB model</div>
   <div id="input-area" hidden><input id="name-input" placeholder="Type the name…" autocomplete="off"></div>
   <div class="actions" id="actions"></div>
 </section>
@@ -53,18 +53,22 @@ import { items, build } from "./model.js";
 
 const canvas = document.getElementById("c");
 const viewer = new Viewer(canvas);
+const promptEl = document.getElementById("prompt");
+const subEl = document.getElementById("sub");
 
-function updatePickables(group) {
-  const pickables = [];
-  group.traverse(o => { if (o.userData && o.userData.id) pickables.push(o); });
-  viewer.setPickables(pickables);
-  viewer.fit(group);
+function setStatus(msg, sub) {
+  promptEl.textContent = msg;
+  if (sub !== undefined) subEl.textContent = sub;
 }
 
 const engineGroup = build(viewer.scene, (g) => {
-  updatePickables(g);
-  document.getElementById("prompt").textContent = "Tap the engine to learn about it";
-  document.getElementById("sub").textContent = "Real GLB loaded · drag to spin, scroll to zoom, F to fit";
+  const pickables = [];
+  g.traverse(o => {
+    if (o.isMesh && o.userData && o.userData.id) pickables.push(o);
+  });
+  viewer.setPickables(pickables);
+  viewer.fit(g);
+  setStatus("Tap the engine", pickables.length + " parts ready · drag to spin, click to select");
 });
 
 const quiz = new Quiz(items, { statsKey: "fini-gas-engine" });
@@ -76,30 +80,25 @@ function render() {
   document.getElementById("modes").innerHTML = Object.entries(MODES).map(([k,v]) =>
     `<button class="chip" data-m="${k}" aria-pressed="${k===mode}">${v}</button>`).join("");
 
-  const prompt = document.getElementById("prompt");
-  const sub = document.getElementById("sub");
   const actions = document.getElementById("actions");
   const inputArea = document.getElementById("input-area");
   actions.innerHTML = "";
   inputArea.hidden = true;
 
   if (style === "explore") {
-    if (!prompt.textContent.includes("Tap")) {
-      prompt.textContent = "Tap the engine to learn about it";
-      sub.textContent = "Real GLB model · drag to spin, scroll to zoom, F to fit";
-    }
+    // status already set by load
   } else if (style === "find") {
     const t = quiz.target;
     if (t) {
-      prompt.innerHTML = `Find the <em>${quiz.byId[t].name}</em>`;
-      sub.textContent = quiz.byId[t].hint || "";
+      promptEl.innerHTML = `Find the <em>${quiz.byId[t].name}</em>`;
+      subEl.textContent = quiz.byId[t].hint || "";
     } else {
-      prompt.textContent = "All found!";
-      sub.textContent = "";
+      promptEl.textContent = "All found!";
+      subEl.textContent = "";
     }
     if (!quiz.exam) actions.innerHTML = `<button class="btn" id="reveal">Reveal</button><button class="btn" id="skip">Skip</button>`;
   } else if (style === "name") {
-    prompt.textContent = quiz.selected ? `Name this: ${quiz.byId[quiz.selected].name}` : "Tap a part, then type its name";
+    promptEl.textContent = quiz.selected ? `Name this: ${quiz.byId[quiz.selected].name}` : "Tap a part, then type its name";
     inputArea.hidden = !quiz.selected;
     if (quiz.selected && !quiz.exam) actions.innerHTML = `<button class="btn" id="reveal">Reveal</button>`;
   }
@@ -121,8 +120,9 @@ function bind() {
 
 viewer.onPick = (id) => {
   const res = quiz.pick(id);
-  if (res.ok) document.getElementById("sub").textContent = "Correct!";
-  else if (res.ok === false) document.getElementById("sub").textContent = "Try again";
+  if (res && res.ok) subEl.textContent = "Correct! · " + (quiz.byId[id]?.fact || "");
+  else if (res && res.ok === false) subEl.textContent = "Try again";
+  else subEl.textContent = "Selected: " + (quiz.byId[id]?.name || id);
   render();
 };
 
