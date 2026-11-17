@@ -1,0 +1,1 @@
+$(cat /workspace/artifacts/finditnameit-models/models/gas-engine/model.js)

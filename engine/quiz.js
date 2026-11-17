@@ -1,0 +1,1 @@
+$(cat /workspace/artifacts/finditnameit-models/engine/quiz.js)

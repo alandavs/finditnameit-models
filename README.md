@@ -1,2 +1,1 @@
-# finditnameit-models
-Find It Name It interactive 3D models (public demo)
+$(cat /workspace/artifacts/finditnameit-models/README.md)

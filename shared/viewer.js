@@ -1,0 +1,1 @@
+$(cat /workspace/artifacts/finditnameit-models/shared/viewer.js)
