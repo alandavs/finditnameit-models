@@ -1,4 +1,6 @@
 // Inline-4 gas engine — detailed student cutaway
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
+
 export const items = [
   { id: "block", name: "Engine block", aliases: ["cylinder block", "block"], region: "main structure", near: "cylinders", fame: 1, fact: "The main casting. Holds the cylinders, crankshaft main bearings, and coolant jackets.", hint: "The big solid piece everything bolts to." },
   { id: "cylinders", name: "Cylinders", aliases: ["bores", "cylinder bores"], region: "block", near: "pistons", fame: 1, fact: "Four precision bores. The piston rings seal against these walls.", hint: "The round holes the pistons slide in." },
@@ -27,13 +29,11 @@ export function build(scene) {
   const matRed = new THREE.MeshStandardMaterial({ color: 0xc0392b, metalness: 0.25, roughness: 0.55 });
   const matDark = new THREE.MeshStandardMaterial({ color: 0x1a1a22, metalness: 0.4, roughness: 0.6 });
 
-  // Block
   const block = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.5, 1.55), matBlock);
   block.position.y = 0.15;
   block.userData = { id: "block", layer: "main" };
   g.add(block);
 
-  // Cylinders, pistons, rings, rods
   for (let i = 0; i < 4; i++) {
     const x = (i - 1.5) * 0.75;
     const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 1.25, 24), matMetal);
@@ -46,7 +46,6 @@ export function build(scene) {
     piston.userData = { id: "pistons", layer: "inner" };
     g.add(piston);
 
-    // Rings (thin tori)
     for (let r = 0; r < 2; r++) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.235, 0.012, 8, 20), matMetal);
       ring.rotation.x = Math.PI / 2;
@@ -61,14 +60,12 @@ export function build(scene) {
     g.add(rod);
   }
 
-  // Crankshaft + simple counterweights
   const crank = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 3.7, 16), matAlum);
   crank.rotation.z = Math.PI / 2;
   crank.position.set(0, -0.42, 0);
   crank.userData = { id: "crankshaft", layer: "inner" };
   g.add(crank);
 
-  // Spark plugs
   for (let i = 0; i < 4; i++) {
     const plug = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.42, 10), matRed);
     plug.position.set((i - 1.5) * 0.75, 2.05, 0.22);
@@ -76,13 +73,11 @@ export function build(scene) {
     g.add(plug);
   }
 
-  // Valve cover (outer)
   const cover = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.32, 1.75), matAlum);
   cover.position.y = 2.28;
   cover.userData = { id: "valve-cover", layer: "outer" };
   g.add(cover);
 
-  // Oil pan (outer)
   const pan = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.38, 1.35), matDark);
   pan.position.y = -0.92;
   pan.userData = { id: "oil-pan", layer: "outer" };
