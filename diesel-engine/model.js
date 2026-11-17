@@ -1,5 +1,5 @@
 // Diesel engine — student cutaway (compression-ignition).
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js";
+import * as THREE from "three";
 
 export const items = [
   { id: "block", name: "Engine block", aliases: ["block"], region: "main structure", near: "cylinders", fame: 1, fact: "Heavier casting than a gas engine to handle higher compression.", hint: "The main structural casting." },
