@@ -1,7 +1,4 @@
-// CAD-style 3D viewer.
-// Expects an import map that maps "three" and "three/addons/" 
-// (see the index.html of each model).
-
+// CAD-style 3D viewer with reliable click picking.
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
@@ -11,7 +8,7 @@ export class Viewer {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(background);
 
-    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 
@@ -25,6 +22,7 @@ export class Viewer {
     this.pickables = [];
     this.onPick = () => {};
 
+    this._downPos = null;
     this._setupLights();
     this._setupEvents();
     this.resize();
@@ -33,21 +31,23 @@ export class Viewer {
   }
 
   _setupLights() {
-    this.scene.add(new THREE.AmbientLight(0x6070a0, 0.65));
-    const key = new THREE.DirectionalLight(0xffffff, 1.15);
+    this.scene.add(new THREE.AmbientLight(0x6070a0, 0.7));
+    const key = new THREE.DirectionalLight(0xffffff, 1.2);
     key.position.set(6, 10, 8);
     this.scene.add(key);
-    const rim = new THREE.DirectionalLight(0xffb547, 0.35);
+    const rim = new THREE.DirectionalLight(0xffb547, 0.4);
     rim.position.set(-5, 3, -6);
     this.scene.add(rim);
   }
 
   setPickables(meshes) {
-    this.pickables = meshes;
+    this.pickables = meshes || [];
   }
 
-  fit(object, padding = 1.5) {
+  fit(object, padding = 1.6) {
+    if (!object) return;
     const box = new THREE.Box3().setFromObject(object);
+    if (box.isEmpty()) return;
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
@@ -68,7 +68,18 @@ export class Viewer {
 
   _setupEvents() {
     const canvas = this.canvas;
-    canvas.addEventListener("pointerup", e => this._onPointer(e));
+    canvas.addEventListener("pointerdown", e => {
+      this._downPos = { x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener("pointerup", e => {
+      if (!this._downPos) return;
+      const dx = e.clientX - this._downPos.x;
+      const dy = e.clientY - this._downPos.y;
+      const moved = Math.hypot(dx, dy);
+      this._downPos = null;
+      if (moved > 6) return; // was a drag, not a click
+      this._onPointer(e);
+    });
     canvas.addEventListener("dblclick", () => this.fit(this.scene));
     window.addEventListener("keydown", e => {
       if (e.key === "f" || e.key === "F") this.fit(this.scene);
@@ -84,14 +95,16 @@ export class Viewer {
     const hits = this.raycaster.intersectObjects(this.pickables, true);
     if (hits.length) {
       let obj = hits[0].object;
-      while (obj && !obj.userData.id) obj = obj.parent;
-      if (obj && obj.userData.id) this.onPick(obj.userData.id, obj);
+      while (obj && !(obj.userData && obj.userData.id)) obj = obj.parent;
+      if (obj && obj.userData && obj.userData.id) {
+        this.onPick(obj.userData.id, obj);
+      }
     }
   }
 
   toggleLayers() {
     this.scene.traverse(obj => {
-      if (obj.userData.layer === "outer") obj.visible = !obj.visible;
+      if (obj.userData && obj.userData.layer === "outer") obj.visible = !obj.visible;
     });
   }
 
