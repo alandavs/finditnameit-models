@@ -38,7 +38,7 @@
   <button class="chip" id="layers">Toggle layers (L)</button>
 </header>
 <section class="card" id="card">
-  <div class="prompt" id="prompt">Loading…</div>
+  <div class="prompt" id="prompt">Loading real engine model…</div>
   <div class="sub" id="sub"></div>
   <div id="input-area" hidden><input id="name-input" placeholder="Type the name…" autocomplete="off"></div>
   <div class="actions" id="actions"></div>
@@ -51,12 +51,20 @@ import { items, build } from "./model.js";
 
 const canvas = document.getElementById("c");
 const viewer = new Viewer(canvas);
-const engineGroup = build(viewer.scene);
-viewer.fit(engineGroup);
+window.__viewer = viewer; // for post-load fit
 
-const pickables = [];
-engineGroup.traverse(o => { if (o.userData.id) pickables.push(o); });
-viewer.setPickables(pickables);
+const engineGroup = build(viewer.scene);
+
+function updatePickables() {
+  const pickables = [];
+  engineGroup.traverse(o => { if (o.userData.id) pickables.push(o); });
+  viewer.setPickables(pickables);
+}
+updatePickables();
+
+// Re-check after GLB loads
+setTimeout(updatePickables, 2000);
+setTimeout(updatePickables, 5000);
 
 const quiz = new Quiz(items, { statsKey: "fini-gas-engine" });
 
@@ -75,8 +83,8 @@ function render() {
   inputArea.hidden = true;
 
   if (style === "explore") {
-    prompt.textContent = "Tap any part to learn about it";
-    sub.textContent = "CAD controls: left-drag spin, right-drag pan, scroll zoom, F to fit, L to toggle outer layers";
+    prompt.textContent = "Tap the engine to learn about it";
+    sub.textContent = "Real GLB model · drag to spin, scroll to zoom, F to fit";
   } else if (style === "find") {
     const t = quiz.target;
     if (t) {
@@ -115,14 +123,9 @@ viewer.onPick = (id) => {
   render();
 };
 
-try {
-  render();
-  bind();
-  setInterval(() => { if (quiz.tick()) render(); }, 500);
-} catch (e) {
-  document.getElementById("prompt").textContent = "Error: " + e.message;
-  console.error(e);
-}
+render();
+bind();
+setInterval(() => { if (quiz.tick()) render(); }, 500);
 </script>
 </body>
 </html>
