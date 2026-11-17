@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Find It Name It · Gas Engine</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
 <style>
   :root { --ink:#0A0D18; --panel:#121628; --line:#2B3354; --text:#EAEDF6; --amber:#FFB547; --good:#4ADE9A; --bad:#FF6B6B; }
   html,body { margin:0; height:100%; background:var(--ink); color:var(--text); font-family:system-ui,sans-serif; overflow:hidden; }
@@ -107,9 +115,14 @@ viewer.onPick = (id) => {
   render();
 };
 
-render();
-bind();
-setInterval(() => { if (quiz.tick()) render(); }, 500);
+try {
+  render();
+  bind();
+  setInterval(() => { if (quiz.tick()) render(); }, 500);
+} catch (e) {
+  document.getElementById("prompt").textContent = "Error: " + e.message;
+  console.error(e);
+}
 </script>
 </body>
 </html>
