@@ -27,6 +27,7 @@
   button.btn { background:transparent; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 14px; cursor:pointer; }
   button.btn.primary { background:var(--amber); color:#241500; border-color:var(--amber); }
   input { background:var(--ink); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 10px; width:100%; }
+  .nav { margin-left:auto; }
 </style>
 </head>
 <body>
@@ -36,6 +37,7 @@
   <div id="styles"></div>
   <div id="modes"></div>
   <button class="chip" id="layers">Toggle layers (L)</button>
+  <a class="chip nav" href="../index.html">← Library</a>
 </header>
 <section class="card" id="card">
   <div class="prompt" id="prompt">Loading real engine model…</div>
@@ -51,20 +53,19 @@ import { items, build } from "./model.js";
 
 const canvas = document.getElementById("c");
 const viewer = new Viewer(canvas);
-window.__viewer = viewer; // for post-load fit
 
-const engineGroup = build(viewer.scene);
-
-function updatePickables() {
+function updatePickables(group) {
   const pickables = [];
-  engineGroup.traverse(o => { if (o.userData.id) pickables.push(o); });
+  group.traverse(o => { if (o.userData && o.userData.id) pickables.push(o); });
   viewer.setPickables(pickables);
+  viewer.fit(group);
 }
-updatePickables();
 
-// Re-check after GLB loads
-setTimeout(updatePickables, 2000);
-setTimeout(updatePickables, 5000);
+const engineGroup = build(viewer.scene, (g) => {
+  updatePickables(g);
+  document.getElementById("prompt").textContent = "Tap the engine to learn about it";
+  document.getElementById("sub").textContent = "Real GLB loaded · drag to spin, scroll to zoom, F to fit";
+});
 
 const quiz = new Quiz(items, { statsKey: "fini-gas-engine" });
 
@@ -83,8 +84,10 @@ function render() {
   inputArea.hidden = true;
 
   if (style === "explore") {
-    prompt.textContent = "Tap the engine to learn about it";
-    sub.textContent = "Real GLB model · drag to spin, scroll to zoom, F to fit";
+    if (!prompt.textContent.includes("Tap")) {
+      prompt.textContent = "Tap the engine to learn about it";
+      sub.textContent = "Real GLB model · drag to spin, scroll to zoom, F to fit";
+    }
   } else if (style === "find") {
     const t = quiz.target;
     if (t) {
