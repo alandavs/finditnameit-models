@@ -26,12 +26,12 @@
 <body>
 <canvas id="c"></canvas>
 <header class="hud">
-  <div class="brand">GAS ENGINE · CLICK TEST</div>
+  <div class="brand">GAS ENGINE</div>
   <a class="chip" href="../index.html">← Library</a>
 </header>
 <section class="card">
   <div class="prompt" id="prompt">Loading…</div>
-  <div class="sub" id="sub">If you can click the model, this line will change.</div>
+  <div class="sub" id="sub">Click the model.</div>
 </section>
 
 <script type="module">
@@ -42,8 +42,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const canvas = document.getElementById("c");
 const prompt = document.getElementById("prompt");
 const sub = document.getElementById("sub");
-
-function setStatus(a, b) { prompt.textContent = a; if (b) sub.textContent = b; }
+function setStatus(a, b) { prompt.textContent = a; if (b !== undefined) sub.textContent = b; }
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -61,24 +60,26 @@ scene.add(key);
 const group = new THREE.Group();
 scene.add(group);
 
-// Always-visible clickable fallback
 const box = new THREE.Mesh(
   new THREE.BoxGeometry(1.4, 0.9, 0.9),
   new THREE.MeshStandardMaterial({ color: 0x5a6a8a, metalness: 0.5, roughness: 0.4 })
 );
-box.userData = { id: "engine", name: "Engine block" };
+box.userData = { id: "engine", name: "Engine" };
 group.add(box);
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
-let down = null;
+let downPos = null;
 
-canvas.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener("pointerdown", e => {
+  downPos = { x: e.clientX, y: e.clientY };
+});
 canvas.addEventListener("pointerup", e => {
-  if (!down) return;
-  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-  down = null;
-  if (moved > 8) return;
+  if (!downPos) return;
+  const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+  downPos = null;
+  // More forgiving — only ignore big drags
+  if (moved > 20) return;
 
   const rect = canvas.getBoundingClientRect();
   pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -87,9 +88,9 @@ canvas.addEventListener("pointerup", e => {
   const hits = raycaster.intersectObjects(group.children, true);
   if (hits.length) {
     const obj = hits[0].object;
-    setStatus("Clicked!", obj.userData.name || "Engine part · " + (obj.userData.id || "unknown"));
+    setStatus("Selected: " + (obj.userData.name || "part"), "id: " + (obj.userData.id || "engine"));
   } else {
-    setStatus("Missed", "Click landed on empty space");
+    setStatus("No hit", "Click landed off the model");
   }
 });
 
@@ -103,18 +104,21 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-const box3 = new THREE.Box3().setFromObject(group);
-const size = box3.getSize(new THREE.Vector3());
-const center = box3.getCenter(new THREE.Vector3());
-const maxDim = Math.max(size.x, size.y, size.z);
-const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 2;
-camera.position.copy(center).add(new THREE.Vector3(dist * 0.6, dist * 0.4, dist));
-controls.target.copy(center);
-controls.update();
+function fit() {
+  const box3 = new THREE.Box3().setFromObject(group);
+  if (box3.isEmpty()) return;
+  const size = box3.getSize(new THREE.Vector3());
+  const center = box3.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.8;
+  camera.position.copy(center).add(new THREE.Vector3(dist * 0.55, dist * 0.35, dist));
+  controls.target.copy(center);
+  controls.update();
+}
+fit();
 
-setStatus("Tap the box", "A short click (not a drag) should change this text.");
+setStatus("Tap the model", "A normal click should select it.");
 
-// Try the real GLB in the background
 const loader = new GLTFLoader();
 loader.load(
   "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/2CylinderEngine/glTF-Binary/2CylinderEngine.glb",
@@ -127,17 +131,11 @@ loader.load(
     });
     group.remove(box);
     group.add(model);
-    const b = new THREE.Box3().setFromObject(model);
-    const c = b.getCenter(new THREE.Vector3());
-    const s = b.getSize(new THREE.Vector3());
-    const d = Math.max(s.x, s.y, s.z) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.8;
-    camera.position.copy(c).add(new THREE.Vector3(d * 0.5, d * 0.3, d));
-    controls.target.copy(c);
-    controls.update();
-    setStatus("Real engine loaded", "Tap anywhere on it.");
+    fit();
+    setStatus("Engine ready", "Click anywhere on the model.");
   },
   undefined,
-  () => setStatus("Using simple model", "GLB failed — box is still clickable.")
+  () => setStatus("Simple model", "GLB failed — box is still clickable.")
 );
 
 function loop() {
