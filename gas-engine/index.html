@@ -13,122 +13,139 @@
 }
 </script>
 <style>
-  :root { --ink:#0A0D18; --panel:#121628; --line:#2B3354; --text:#EAEDF6; --amber:#FFB547; --good:#4ADE9A; --bad:#FF6B6B; }
-  html,body { margin:0; height:100%; background:var(--ink); color:var(--text); font-family:system-ui,sans-serif; overflow:hidden; }
+  html,body { margin:0; height:100%; background:#0A0D18; color:#EAEDF6; font-family:system-ui,sans-serif; overflow:hidden; }
   canvas { display:block; width:100%; height:100%; }
-  .hud { position:fixed; top:0; left:0; right:0; padding:10px 16px; background:var(--ink); border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; z-index:5; }
-  .brand { font-weight:700; color:var(--amber); letter-spacing:.05em; }
-  .chip { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:999px; padding:6px 12px; cursor:pointer; font-size:13px; }
-  .chip[aria-pressed="true"] { background:var(--amber); color:#241500; }
-  .card { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:min(520px,92vw); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; z-index:5; }
-  .prompt { font-size:22px; font-weight:700; margin:4px 0; }
-  .sub { color:#9AA2BF; font-size:14px; min-height:1.4em; }
-  .actions { display:flex; gap:8px; margin-top:10px; }
-  button.btn { background:transparent; border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 14px; cursor:pointer; }
-  button.btn.primary { background:var(--amber); color:#241500; border-color:var(--amber); }
-  input { background:var(--ink); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:8px 10px; width:100%; }
-  .nav { margin-left:auto; }
+  .hud { position:fixed; top:0; left:0; right:0; padding:12px 16px; background:#0A0D18; border-bottom:1px solid #2B3354; z-index:10; display:flex; gap:12px; align-items:center; }
+  .brand { font-weight:700; color:#FFB547; }
+  .card { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:min(480px,90vw); background:#121628; border:1px solid #2B3354; border-radius:12px; padding:16px; z-index:10; }
+  .prompt { font-size:20px; font-weight:700; margin:0 0 6px; }
+  .sub { color:#9AA2BF; font-size:14px; }
+  a.chip { background:rgba(255,255,255,.06); border:1px solid #2B3354; border-radius:999px; padding:6px 12px; text-decoration:none; color:inherit; font-size:13px; margin-left:auto; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <header class="hud">
-  <div class="brand">FIND IT NAME IT · GAS ENGINE</div>
-  <div id="styles"></div>
-  <div id="modes"></div>
-  <button class="chip" id="layers">Toggle layers (L)</button>
-  <a class="chip nav" href="../index.html">← Library</a>
+  <div class="brand">GAS ENGINE · CLICK TEST</div>
+  <a class="chip" href="../index.html">← Library</a>
 </header>
-<section class="card" id="card">
-  <div class="prompt" id="prompt">Loading real engine…</div>
-  <div class="sub" id="sub">Fetching GLB model</div>
-  <div id="input-area" hidden><input id="name-input" placeholder="Type the name…" autocomplete="off"></div>
-  <div class="actions" id="actions"></div>
+<section class="card">
+  <div class="prompt" id="prompt">Loading…</div>
+  <div class="sub" id="sub">If you can click the model, this line will change.</div>
 </section>
 
 <script type="module">
-import { Viewer } from "../shared/viewer.js";
-import { Quiz, MODES, STYLES } from "../engine/quiz.js";
-import { items, build } from "./model.js";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const canvas = document.getElementById("c");
-const viewer = new Viewer(canvas);
-const promptEl = document.getElementById("prompt");
-const subEl = document.getElementById("sub");
+const prompt = document.getElementById("prompt");
+const sub = document.getElementById("sub");
 
-function setStatus(msg, sub) {
-  promptEl.textContent = msg;
-  if (sub !== undefined) subEl.textContent = sub;
-}
+function setStatus(a, b) { prompt.textContent = a; if (b) sub.textContent = b; }
 
-const engineGroup = build(viewer.scene, (g) => {
-  const pickables = [];
-  g.traverse(o => {
-    if (o.isMesh && o.userData && o.userData.id) pickables.push(o);
-  });
-  viewer.setPickables(pickables);
-  viewer.fit(g);
-  setStatus("Tap the engine", pickables.length + " parts ready · drag to spin, click to select");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0d18);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0x6070a0, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.2);
+key.position.set(5, 8, 6);
+scene.add(key);
+
+const group = new THREE.Group();
+scene.add(group);
+
+// Always-visible clickable fallback
+const box = new THREE.Mesh(
+  new THREE.BoxGeometry(1.4, 0.9, 0.9),
+  new THREE.MeshStandardMaterial({ color: 0x5a6a8a, metalness: 0.5, roughness: 0.4 })
+);
+box.userData = { id: "engine", name: "Engine block" };
+group.add(box);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let down = null;
+
+canvas.addEventListener("pointerdown", e => { down = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener("pointerup", e => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  down = null;
+  if (moved > 8) return;
+
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObjects(group.children, true);
+  if (hits.length) {
+    const obj = hits[0].object;
+    setStatus("Clicked!", obj.userData.name || "Engine part · " + (obj.userData.id || "unknown"));
+  } else {
+    setStatus("Missed", "Click landed on empty space");
+  }
 });
 
-const quiz = new Quiz(items, { statsKey: "fini-gas-engine" });
-
-function render() {
-  const style = quiz.style, mode = quiz.mode;
-  document.getElementById("styles").innerHTML = Object.entries(STYLES).map(([k,v]) =>
-    `<button class="chip" data-s="${k}" aria-pressed="${k===style}">${v}</button>`).join("");
-  document.getElementById("modes").innerHTML = Object.entries(MODES).map(([k,v]) =>
-    `<button class="chip" data-m="${k}" aria-pressed="${k===mode}">${v}</button>`).join("");
-
-  const actions = document.getElementById("actions");
-  const inputArea = document.getElementById("input-area");
-  actions.innerHTML = "";
-  inputArea.hidden = true;
-
-  if (style === "explore") {
-    // status already set by load
-  } else if (style === "find") {
-    const t = quiz.target;
-    if (t) {
-      promptEl.innerHTML = `Find the <em>${quiz.byId[t].name}</em>`;
-      subEl.textContent = quiz.byId[t].hint || "";
-    } else {
-      promptEl.textContent = "All found!";
-      subEl.textContent = "";
-    }
-    if (!quiz.exam) actions.innerHTML = `<button class="btn" id="reveal">Reveal</button><button class="btn" id="skip">Skip</button>`;
-  } else if (style === "name") {
-    promptEl.textContent = quiz.selected ? `Name this: ${quiz.byId[quiz.selected].name}` : "Tap a part, then type its name";
-    inputArea.hidden = !quiz.selected;
-    if (quiz.selected && !quiz.exam) actions.innerHTML = `<button class="btn" id="reveal">Reveal</button>`;
-  }
-
-  if (quiz.exam && !quiz.graded) actions.innerHTML += `<button class="btn primary" id="grade">Grade me</button>`;
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
 }
+window.addEventListener("resize", resize);
+resize();
 
-function bind() {
-  document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { quiz.start(quiz.mode, b.dataset.s); render(); });
-  document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { quiz.start(b.dataset.m, quiz.style); render(); });
-  document.getElementById("layers").onclick = () => viewer.toggleLayers();
-  document.getElementById("reveal")?.addEventListener("click", () => { quiz.reveal(); render(); });
-  document.getElementById("skip")?.addEventListener("click", () => { quiz.skip(); render(); });
-  document.getElementById("grade")?.addEventListener("click", () => { quiz.grade(); quiz.record(); render(); });
-  document.getElementById("name-input")?.addEventListener("keydown", e => {
-    if (e.key === "Enter") { quiz.answerName(e.target.value); e.target.value = ""; render(); }
-  });
+const box3 = new THREE.Box3().setFromObject(group);
+const size = box3.getSize(new THREE.Vector3());
+const center = box3.getCenter(new THREE.Vector3());
+const maxDim = Math.max(size.x, size.y, size.z);
+const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 2;
+camera.position.copy(center).add(new THREE.Vector3(dist * 0.6, dist * 0.4, dist));
+controls.target.copy(center);
+controls.update();
+
+setStatus("Tap the box", "A short click (not a drag) should change this text.");
+
+// Try the real GLB in the background
+const loader = new GLTFLoader();
+loader.load(
+  "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/2CylinderEngine/glTF-Binary/2CylinderEngine.glb",
+  (gltf) => {
+    const model = gltf.scene;
+    model.scale.setScalar(0.008);
+    model.position.y = -0.4;
+    model.traverse(c => {
+      if (c.isMesh) c.userData = { id: "engine", name: "Engine assembly" };
+    });
+    group.remove(box);
+    group.add(model);
+    const b = new THREE.Box3().setFromObject(model);
+    const c = b.getCenter(new THREE.Vector3());
+    const s = b.getSize(new THREE.Vector3());
+    const d = Math.max(s.x, s.y, s.z) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.8;
+    camera.position.copy(c).add(new THREE.Vector3(d * 0.5, d * 0.3, d));
+    controls.target.copy(c);
+    controls.update();
+    setStatus("Real engine loaded", "Tap anywhere on it.");
+  },
+  undefined,
+  () => setStatus("Using simple model", "GLB failed — box is still clickable.")
+);
+
+function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
 }
-
-viewer.onPick = (id) => {
-  const res = quiz.pick(id);
-  if (res && res.ok) subEl.textContent = "Correct! · " + (quiz.byId[id]?.fact || "");
-  else if (res && res.ok === false) subEl.textContent = "Try again";
-  else subEl.textContent = "Selected: " + (quiz.byId[id]?.name || id);
-  render();
-};
-
-render();
-bind();
-setInterval(() => { if (quiz.tick()) render(); }, 500);
+loop();
 </script>
 </body>
 </html>
