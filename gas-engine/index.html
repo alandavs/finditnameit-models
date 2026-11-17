@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Find It Name It · Gas Engine</title>
+<title>Find It Name It · V6 Engine</title>
 <script type="importmap">
 {
   "imports": {
@@ -26,12 +26,12 @@
 <body>
 <canvas id="c"></canvas>
 <header class="hud">
-  <div class="brand">GAS ENGINE</div>
+  <div class="brand">V6 ENGINE</div>
   <a class="chip" href="../index.html">← Library</a>
 </header>
 <section class="card">
-  <div class="prompt" id="prompt">Loading engine…</div>
-  <div class="sub" id="sub">Click any part to identify it.</div>
+  <div class="prompt" id="prompt">Building V6…</div>
+  <div class="sub" id="sub">Click any part.</div>
 </section>
 
 <script type="module">
@@ -51,41 +51,40 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 
-scene.add(new THREE.AmbientLight(0x6070a0, 0.65));
-const key = new THREE.DirectionalLight(0xffffff, 1.15);
-key.position.set(6, 10, 8);
+scene.add(new THREE.AmbientLight(0x6070a0, 0.6));
+const key = new THREE.DirectionalLight(0xffffff, 1.2);
+key.position.set(8, 12, 10);
 scene.add(key);
-const rim = new THREE.DirectionalLight(0xffb547, 0.35);
-rim.position.set(-5, 3, -6);
-scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffb547, 0.3);
+fill.position.set(-6, 4, -8);
+scene.add(fill);
 
 const group = new THREE.Group();
 scene.add(group);
 
-// Materials
-const matBlock = new THREE.MeshStandardMaterial({ color: 0x3a3a42, metalness: 0.6, roughness: 0.4 });
-const matAlum = new THREE.MeshStandardMaterial({ color: 0xc8d0d8, metalness: 0.85, roughness: 0.2 });
-const matSteel = new THREE.MeshStandardMaterial({ color: 0x9aa0aa, metalness: 0.9, roughness: 0.22 });
-const matPiston = new THREE.MeshStandardMaterial({ color: 0xd4b84a, metalness: 0.4, roughness: 0.45 });
-const matRed = new THREE.MeshStandardMaterial({ color: 0xb33a3a, metalness: 0.3, roughness: 0.5 });
-const matDark = new THREE.MeshStandardMaterial({ color: 0x1c1c22, metalness: 0.5, roughness: 0.55 });
-const matIntake = new THREE.MeshStandardMaterial({ color: 0x4a6a8a, metalness: 0.4, roughness: 0.4 });
-const matExhaust = new THREE.MeshStandardMaterial({ color: 0x6a4a3a, metalness: 0.45, roughness: 0.42 });
-const matValve = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.7, roughness: 0.25 });
+const matBlock = new THREE.MeshStandardMaterial({ color: 0x2f3340, metalness: 0.65, roughness: 0.38 });
+const matAlum = new THREE.MeshStandardMaterial({ color: 0xc0c8d0, metalness: 0.88, roughness: 0.18 });
+const matSteel = new THREE.MeshStandardMaterial({ color: 0x8e949e, metalness: 0.92, roughness: 0.2 });
+const matPiston = new THREE.MeshStandardMaterial({ color: 0xd0b040, metalness: 0.45, roughness: 0.4 });
+const matRed = new THREE.MeshStandardMaterial({ color: 0xa83333, metalness: 0.35, roughness: 0.48 });
+const matDark = new THREE.MeshStandardMaterial({ color: 0x18181e, metalness: 0.5, roughness: 0.55 });
+const matIntake = new THREE.MeshStandardMaterial({ color: 0x3d5a78, metalness: 0.4, roughness: 0.4 });
+const matExhaust = new THREE.MeshStandardMaterial({ color: 0x5c4034, metalness: 0.42, roughness: 0.45 });
+const matValve = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, metalness: 0.75, roughness: 0.22 });
 
 const parts = {
-  block: { name: "Engine block", fact: "Main casting that holds the cylinders, crankshaft bearings and coolant jackets." },
-  cylinders: { name: "Cylinders", fact: "Precision bores the pistons slide in. Combustion happens above each piston." },
-  pistons: { name: "Pistons", fact: "Transfer combustion force downward. Have ring grooves for sealing." },
-  rods: { name: "Connecting rods", fact: "Convert the piston’s linear motion into rotation of the crankshaft." },
-  crankshaft: { name: "Crankshaft", fact: "Turns reciprocating motion into rotational power. Counterweights balance the throws." },
-  sparkplugs: { name: "Spark plugs", fact: "Ignite the compressed air-fuel mixture with a timed spark." },
-  valves: { name: "Valves", fact: "Open and close the intake and exhaust ports. Typically 2 or 4 per cylinder." },
-  camshaft: { name: "Camshaft", fact: "Times valve opening. Driven at half crank speed." },
-  valvecover: { name: "Valve cover", fact: "Covers the valvetrain. Can be removed for inspection." },
-  intake: { name: "Intake manifold", fact: "Distributes the air-fuel mixture to each cylinder." },
-  exhaust: { name: "Exhaust manifold", fact: "Collects exhaust gases from the cylinders." },
-  oilpan: { name: "Oil pan", fact: "Reservoir for engine oil. The pickup tube draws from it." }
+  block: { name: "Engine block", fact: "V-shaped casting that holds both banks of cylinders and the crankshaft." },
+  cylinders: { name: "Cylinders", fact: "Six bores — three on each bank — where the pistons travel." },
+  pistons: { name: "Pistons", fact: "Six pistons that convert combustion pressure into motion." },
+  rods: { name: "Connecting rods", fact: "Link each piston to a crankshaft throw." },
+  crankshaft: { name: "Crankshaft", fact: "Six-throw crank that turns the reciprocating force into rotation." },
+  sparkplugs: { name: "Spark plugs", fact: "One per cylinder. Ignite the mixture at the top of the compression stroke." },
+  valves: { name: "Valves", fact: "Intake and exhaust valves for each cylinder, timed by the cams." },
+  camshaft: { name: "Camshafts", fact: "One per bank in this DOHC-style layout. Control valve timing." },
+  valvecover: { name: "Valve covers", fact: "One on each bank. Cover the valvetrain." },
+  intake: { name: "Intake manifold", fact: "Feeds both banks from the center of the V." },
+  exhaust: { name: "Exhaust manifolds", fact: "One on the outside of each bank." },
+  oilpan: { name: "Oil pan", fact: "Oil reservoir at the bottom of the block." }
 };
 
 function add(mesh, id) {
@@ -94,76 +93,90 @@ function add(mesh, id) {
   group.add(mesh);
 }
 
-// Block
-const block = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.6, 1.7), matBlock);
-block.position.y = 0.1;
+// Main block (V base)
+const block = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.4, 2.2), matBlock);
+block.position.y = 0;
 add(block, "block");
 
-// Cylinder head
-const head = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.65, 1.8), matAlum);
-head.position.y = 1.45;
-add(head, "block");
+// Two banks at ~60 degrees
+const bankAngle = THREE.MathUtils.degToRad(30);
+for (let bank = 0; bank < 2; bank++) {
+  const side = bank === 0 ? 1 : -1;
+  const bankGroup = new THREE.Group();
+  bankGroup.rotation.z = side * bankAngle;
+  bankGroup.position.y = 0.7;
+  group.add(bankGroup);
 
-// Four cylinders + pistons + rods + valves + plugs
-for (let i = 0; i < 4; i++) {
-  const x = (i - 1.5) * 0.95;
+  const bankBlock = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.9, 0.9), matBlock);
+  bankBlock.position.y = 0.5;
+  bankBlock.userData.id = "block";
+  bankGroup.add(bankBlock);
 
-  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.5, 32), matSteel);
-  cyl.position.set(x, 0.85, 0);
-  add(cyl, "cylinders");
+  for (let i = 0; i < 3; i++) {
+    const x = (i - 1) * 1.0;
 
-  const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.32, 24), matPiston);
-  piston.position.set(x, 1.15 + (i % 2) * 0.12, 0);
-  add(piston, "pistons");
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.1, 28), matSteel);
+    cyl.position.set(x, 0.9, 0);
+    cyl.userData.id = "cylinders";
+    bankGroup.add(cyl);
 
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.9, 12), matSteel);
-  rod.position.set(x, 0.35, 0);
-  add(rod, "rods");
+    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.28, 20), matPiston);
+    piston.position.set(x, 1.15 + (i % 2) * 0.08, 0);
+    piston.userData.id = "pistons";
+    bankGroup.add(piston);
 
-  const plug = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.4, 10), matRed);
-  plug.position.set(x, 2.05, 0.2);
-  add(plug, "sparkplugs");
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.85, 10), matSteel);
+    rod.position.set(x, 0.25, 0);
+    rod.userData.id = "rods";
+    bankGroup.add(rod);
 
-  for (let v = 0; v < 2; v++) {
-    const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.45, 8), matValve);
-    valve.position.set(x + (v - 0.5) * 0.2, 1.85, -0.12);
-    add(valve, "valves");
+    const plug = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 8), matRed);
+    plug.position.set(x, 1.75, 0.15);
+    plug.userData.id = "sparkplugs";
+    bankGroup.add(plug);
+
+    for (let v = 0; v < 2; v++) {
+      const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8), matValve);
+      valve.position.set(x + (v - 0.5) * 0.16, 1.65, -0.1);
+      valve.userData.id = "valves";
+      bankGroup.add(valve);
+    }
   }
+
+  const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.2, 14), matAlum);
+  cam.rotation.z = Math.PI / 2;
+  cam.position.set(0, 1.85, -0.25);
+  cam.userData.id = "camshaft";
+  bankGroup.add(cam);
+
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.22, 1.0), matAlum);
+  cover.position.y = 2.15;
+  cover.userData.id = "valvecover";
+  bankGroup.add(cover);
+
+  const exhaust = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 0.28), matExhaust);
+  exhaust.position.set(0, 1.4, side * 0.7);
+  exhaust.userData.id = "exhaust";
+  bankGroup.add(exhaust);
 }
 
-// Crankshaft
-const crank = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 4.6, 20), matSteel);
+// Crankshaft (horizontal)
+const crank = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.0, 18), matSteel);
 crank.rotation.z = Math.PI / 2;
-crank.position.set(0, -0.55, 0);
+crank.position.set(0, -0.4, 0);
 add(crank, "crankshaft");
 
-// Camshaft
-const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 4.2, 16), matAlum);
-cam.rotation.z = Math.PI / 2;
-cam.position.set(0, 1.95, -0.3);
-add(cam, "camshaft");
-
-// Valve cover
-const cover = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.3, 1.9), matAlum);
-cover.position.y = 2.35;
-add(cover, "valvecover");
-
-// Intake manifold
-const intake = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.3, 0.35), matIntake);
-intake.position.set(0, 1.6, 0.95);
+// Intake in the V
+const intake = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.35, 0.5), matIntake);
+intake.position.set(0, 1.6, 0);
 add(intake, "intake");
 
-// Exhaust manifold
-const exhaust = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.28, 0.32), matExhaust);
-exhaust.position.set(0, 1.55, -0.95);
-add(exhaust, "exhaust");
-
 // Oil pan
-const pan = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.4, 1.5), matDark);
-pan.position.y = -1.15;
+const pan = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.45, 1.8), matDark);
+pan.position.y = -1.1;
 add(pan, "oilpan");
 
-// Raycasting
+// Picking
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let downPos = null;
@@ -188,7 +201,7 @@ canvas.addEventListener("pointerup", e => {
       setStatus(parts[id].name, parts[id].fact);
     }
   } else {
-    setStatus("No hit", "Click on a part of the engine.");
+    setStatus("No hit", "Click on a part of the V6.");
   }
 });
 
@@ -207,14 +220,14 @@ function fit() {
   const size = box3.getSize(new THREE.Vector3());
   const center = box3.getCenter(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
-  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.7;
-  camera.position.copy(center).add(new THREE.Vector3(dist * 0.5, dist * 0.3, dist));
+  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.8;
+  camera.position.copy(center).add(new THREE.Vector3(dist * 0.55, dist * 0.35, dist));
   controls.target.copy(center);
   controls.update();
 }
 fit();
 
-setStatus("Engine ready", "Click any part — block, pistons, valves, crankshaft, etc.");
+setStatus("V6 ready", "Two banks · click any part (pistons, valves, crankshaft, etc.)");
 
 function loop() {
   requestAnimationFrame(loop);
