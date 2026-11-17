@@ -17,7 +17,7 @@
   canvas { display:block; width:100%; height:100%; }
   .hud { position:fixed; top:0; left:0; right:0; padding:12px 16px; background:#0A0D18; border-bottom:1px solid #2B3354; z-index:10; display:flex; gap:12px; align-items:center; }
   .brand { font-weight:700; color:#FFB547; }
-  .card { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:min(480px,90vw); background:#121628; border:1px solid #2B3354; border-radius:12px; padding:16px; z-index:10; }
+  .card { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:min(520px,92vw); background:#121628; border:1px solid #2B3354; border-radius:12px; padding:16px; z-index:10; }
   .prompt { font-size:20px; font-weight:700; margin:0 0 6px; }
   .sub { color:#9AA2BF; font-size:14px; }
   a.chip { background:rgba(255,255,255,.06); border:1px solid #2B3354; border-radius:999px; padding:6px 12px; text-decoration:none; color:inherit; font-size:13px; margin-left:auto; }
@@ -31,7 +31,7 @@
 </header>
 <section class="card">
   <div class="prompt" id="prompt">Loading…</div>
-  <div class="sub" id="sub">Click the model.</div>
+  <div class="sub" id="sub">Click any part.</div>
 </section>
 
 <script type="module">
@@ -60,25 +60,16 @@ scene.add(key);
 const group = new THREE.Group();
 scene.add(group);
 
-const box = new THREE.Mesh(
-  new THREE.BoxGeometry(1.4, 0.9, 0.9),
-  new THREE.MeshStandardMaterial({ color: 0x5a6a8a, metalness: 0.5, roughness: 0.4 })
-);
-box.userData = { id: "engine", name: "Engine" };
-group.add(box);
-
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let downPos = null;
+const partNames = new Map();
 
-canvas.addEventListener("pointerdown", e => {
-  downPos = { x: e.clientX, y: e.clientY };
-});
+canvas.addEventListener("pointerdown", e => { downPos = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener("pointerup", e => {
   if (!downPos) return;
   const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
   downPos = null;
-  // More forgiving — only ignore big drags
   if (moved > 20) return;
 
   const rect = canvas.getBoundingClientRect();
@@ -87,8 +78,11 @@ canvas.addEventListener("pointerup", e => {
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(group.children, true);
   if (hits.length) {
-    const obj = hits[0].object;
-    setStatus("Selected: " + (obj.userData.name || "part"), "id: " + (obj.userData.id || "engine"));
+    let obj = hits[0].object;
+    while (obj && !obj.userData.id) obj = obj.parent;
+    const id = obj?.userData?.id || "part";
+    const name = partNames.get(id) || id;
+    setStatus(name, "id: " + id);
   } else {
     setStatus("No hit", "Click landed off the model");
   }
@@ -115,9 +109,8 @@ function fit() {
   controls.target.copy(center);
   controls.update();
 }
-fit();
 
-setStatus("Tap the model", "A normal click should select it.");
+setStatus("Loading engine…", "Fetching GLB");
 
 const loader = new GLTFLoader();
 loader.load(
@@ -126,16 +119,26 @@ loader.load(
     const model = gltf.scene;
     model.scale.setScalar(0.008);
     model.position.y = -0.4;
+
+    let meshCount = 0;
     model.traverse(c => {
-      if (c.isMesh) c.userData = { id: "engine", name: "Engine assembly" };
+      if (c.isMesh) {
+        meshCount++;
+        // Give each mesh its own id based on name or index so they are separate parts
+        const rawName = (c.name || "part").replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+        const id = rawName && rawName !== "part" ? rawName : "mesh_" + meshCount;
+        c.userData.id = id;
+        const display = c.name || ("Part " + meshCount);
+        partNames.set(id, display);
+      }
     });
-    group.remove(box);
+
     group.add(model);
     fit();
-    setStatus("Engine ready", "Click anywhere on the model.");
+    setStatus("Engine ready", meshCount + " separate parts · click any of them");
   },
   undefined,
-  () => setStatus("Simple model", "GLB failed — box is still clickable.")
+  (err) => setStatus("Load failed", String(err))
 );
 
 function loop() {
