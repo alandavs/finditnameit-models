@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Find It Name It · V6 Engine</title>
+<title>Find It Name It · Engine</title>
 <script type="importmap">
 {
   "imports": {
@@ -21,22 +21,25 @@
   .prompt { font-size:20px; font-weight:700; margin:0 0 6px; }
   .sub { color:#9AA2BF; font-size:14px; }
   a.chip { background:rgba(255,255,255,.06); border:1px solid #2B3354; border-radius:999px; padding:6px 12px; text-decoration:none; color:inherit; font-size:13px; margin-left:auto; }
+  .credit { position:fixed; bottom:6px; right:10px; font-size:11px; color:#666; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <header class="hud">
-  <div class="brand">V6 ENGINE</div>
+  <div class="brand">ENGINE</div>
   <a class="chip" href="../index.html">← Library</a>
 </header>
 <section class="card">
-  <div class="prompt" id="prompt">Building V6…</div>
-  <div class="sub" id="sub">Click any part.</div>
+  <div class="prompt" id="prompt">Loading real engine…</div>
+  <div class="sub" id="sub">Fetching detailed model</div>
 </section>
+<div class="credit">Model: Engine-X by Parth Parmar (engx3d.com) · CC BY-NC 4.0</div>
 
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const canvas = document.getElementById("c");
 const prompt = document.getElementById("prompt");
@@ -47,146 +50,32 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0d18);
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 
-scene.add(new THREE.AmbientLight(0x6070a0, 0.6));
-const key = new THREE.DirectionalLight(0xffffff, 1.2);
-key.position.set(8, 12, 10);
+scene.add(new THREE.AmbientLight(0x6070a0, 0.65));
+const key = new THREE.DirectionalLight(0xffffff, 1.15);
+key.position.set(6, 10, 8);
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xffb547, 0.3);
-fill.position.set(-6, 4, -8);
-scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffb547, 0.3);
+rim.position.set(-5, 3, -6);
+scene.add(rim);
 
 const group = new THREE.Group();
 scene.add(group);
 
-const matBlock = new THREE.MeshStandardMaterial({ color: 0x2f3340, metalness: 0.65, roughness: 0.38 });
-const matAlum = new THREE.MeshStandardMaterial({ color: 0xc0c8d0, metalness: 0.88, roughness: 0.18 });
-const matSteel = new THREE.MeshStandardMaterial({ color: 0x8e949e, metalness: 0.92, roughness: 0.2 });
-const matPiston = new THREE.MeshStandardMaterial({ color: 0xd0b040, metalness: 0.45, roughness: 0.4 });
-const matRed = new THREE.MeshStandardMaterial({ color: 0xa83333, metalness: 0.35, roughness: 0.48 });
-const matDark = new THREE.MeshStandardMaterial({ color: 0x18181e, metalness: 0.5, roughness: 0.55 });
-const matIntake = new THREE.MeshStandardMaterial({ color: 0x3d5a78, metalness: 0.4, roughness: 0.4 });
-const matExhaust = new THREE.MeshStandardMaterial({ color: 0x5c4034, metalness: 0.42, roughness: 0.45 });
-const matValve = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, metalness: 0.75, roughness: 0.22 });
-
-const parts = {
-  block: { name: "Engine block", fact: "V-shaped casting that holds both banks of cylinders and the crankshaft." },
-  cylinders: { name: "Cylinders", fact: "Six bores — three on each bank — where the pistons travel." },
-  pistons: { name: "Pistons", fact: "Six pistons that convert combustion pressure into motion." },
-  rods: { name: "Connecting rods", fact: "Link each piston to a crankshaft throw." },
-  crankshaft: { name: "Crankshaft", fact: "Six-throw crank that turns the reciprocating force into rotation." },
-  sparkplugs: { name: "Spark plugs", fact: "One per cylinder. Ignite the mixture at the top of the compression stroke." },
-  valves: { name: "Valves", fact: "Intake and exhaust valves for each cylinder, timed by the cams." },
-  camshaft: { name: "Camshafts", fact: "One per bank in this DOHC-style layout. Control valve timing." },
-  valvecover: { name: "Valve covers", fact: "One on each bank. Cover the valvetrain." },
-  intake: { name: "Intake manifold", fact: "Feeds both banks from the center of the V." },
-  exhaust: { name: "Exhaust manifolds", fact: "One on the outside of each bank." },
-  oilpan: { name: "Oil pan", fact: "Oil reservoir at the bottom of the block." }
-};
-
-function add(mesh, id) {
-  mesh.userData.id = id;
-  mesh.userData.name = parts[id].name;
-  group.add(mesh);
-}
-
-// Main block (V base)
-const block = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.4, 2.2), matBlock);
-block.position.y = 0;
-add(block, "block");
-
-// Two banks at ~60 degrees
-const bankAngle = THREE.MathUtils.degToRad(30);
-for (let bank = 0; bank < 2; bank++) {
-  const side = bank === 0 ? 1 : -1;
-  const bankGroup = new THREE.Group();
-  bankGroup.rotation.z = side * bankAngle;
-  bankGroup.position.y = 0.7;
-  group.add(bankGroup);
-
-  const bankBlock = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.9, 0.9), matBlock);
-  bankBlock.position.y = 0.5;
-  bankBlock.userData.id = "block";
-  bankGroup.add(bankBlock);
-
-  for (let i = 0; i < 3; i++) {
-    const x = (i - 1) * 1.0;
-
-    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.1, 28), matSteel);
-    cyl.position.set(x, 0.9, 0);
-    cyl.userData.id = "cylinders";
-    bankGroup.add(cyl);
-
-    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.28, 20), matPiston);
-    piston.position.set(x, 1.15 + (i % 2) * 0.08, 0);
-    piston.userData.id = "pistons";
-    bankGroup.add(piston);
-
-    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.85, 10), matSteel);
-    rod.position.set(x, 0.25, 0);
-    rod.userData.id = "rods";
-    bankGroup.add(rod);
-
-    const plug = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35, 8), matRed);
-    plug.position.set(x, 1.75, 0.15);
-    plug.userData.id = "sparkplugs";
-    bankGroup.add(plug);
-
-    for (let v = 0; v < 2; v++) {
-      const valve = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8), matValve);
-      valve.position.set(x + (v - 0.5) * 0.16, 1.65, -0.1);
-      valve.userData.id = "valves";
-      bankGroup.add(valve);
-    }
-  }
-
-  const cam = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.2, 14), matAlum);
-  cam.rotation.z = Math.PI / 2;
-  cam.position.set(0, 1.85, -0.25);
-  cam.userData.id = "camshaft";
-  bankGroup.add(cam);
-
-  const cover = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.22, 1.0), matAlum);
-  cover.position.y = 2.15;
-  cover.userData.id = "valvecover";
-  bankGroup.add(cover);
-
-  const exhaust = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.22, 0.28), matExhaust);
-  exhaust.position.set(0, 1.4, side * 0.7);
-  exhaust.userData.id = "exhaust";
-  bankGroup.add(exhaust);
-}
-
-// Crankshaft (horizontal)
-const crank = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.0, 18), matSteel);
-crank.rotation.z = Math.PI / 2;
-crank.position.set(0, -0.4, 0);
-add(crank, "crankshaft");
-
-// Intake in the V
-const intake = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.35, 0.5), matIntake);
-intake.position.set(0, 1.6, 0);
-add(intake, "intake");
-
-// Oil pan
-const pan = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.45, 1.8), matDark);
-pan.position.y = -1.1;
-add(pan, "oilpan");
-
-// Picking
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let downPos = null;
+const partNames = new Map();
 
 canvas.addEventListener("pointerdown", e => { downPos = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener("pointerup", e => {
   if (!downPos) return;
   const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
   downPos = null;
-  if (moved > 18) return;
+  if (moved > 16) return;
 
   const rect = canvas.getBoundingClientRect();
   pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -197,11 +86,10 @@ canvas.addEventListener("pointerup", e => {
     let obj = hits[0].object;
     while (obj && !obj.userData.id) obj = obj.parent;
     const id = obj?.userData?.id;
-    if (id && parts[id]) {
-      setStatus(parts[id].name, parts[id].fact);
-    }
+    const name = partNames.get(id) || id || "part";
+    setStatus(name, "id: " + (id || "unknown"));
   } else {
-    setStatus("No hit", "Click on a part of the V6.");
+    setStatus("No hit", "Click on the engine.");
   }
 });
 
@@ -217,17 +105,48 @@ resize();
 
 function fit() {
   const box3 = new THREE.Box3().setFromObject(group);
+  if (box3.isEmpty()) return;
   const size = box3.getSize(new THREE.Vector3());
   const center = box3.getCenter(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
-  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.8;
-  camera.position.copy(center).add(new THREE.Vector3(dist * 0.55, dist * 0.35, dist));
+  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.7;
+  camera.position.copy(center).add(new THREE.Vector3(dist * 0.5, dist * 0.3, dist));
   controls.target.copy(center);
   controls.update();
 }
-fit();
 
-setStatus("V6 ready", "Two banks · click any part (pistons, valves, crankshaft, etc.)");
+setStatus("Loading real engine…", "Engine-X detailed model");
+
+const loader = new GLTFLoader();
+loader.load(
+  "https://engx3d.com/models/carengine.glb",
+  (gltf) => {
+    const model = gltf.scene;
+    // Scale if needed — models are usually in meters or mm
+    model.scale.setScalar(1);
+    model.position.set(0, 0, 0);
+
+    let count = 0;
+    model.traverse(c => {
+      if (c.isMesh) {
+        count++;
+        const raw = (c.name || "part_" + count).replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+        const id = raw || "mesh_" + count;
+        c.userData.id = id;
+        partNames.set(id, c.name || ("Part " + count));
+      }
+    });
+
+    group.add(model);
+    fit();
+    setStatus("Engine ready", count + " parts · click any of them");
+  },
+  undefined,
+  (err) => {
+    console.error(err);
+    setStatus("Load failed", "Could not fetch the GLB. Check console.");
+  }
+);
 
 function loop() {
   requestAnimationFrame(loop);
