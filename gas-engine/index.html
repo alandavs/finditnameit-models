@@ -20,7 +20,8 @@
   .card { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:min(520px,92vw); background:#121628; border:1px solid #2B3354; border-radius:12px; padding:16px; z-index:10; }
   .prompt { font-size:20px; font-weight:700; margin:0 0 6px; }
   .sub { color:#9AA2BF; font-size:14px; }
-  a.chip { background:rgba(255,255,255,.06); border:1px solid #2B3354; border-radius:999px; padding:6px 12px; text-decoration:none; color:inherit; font-size:13px; margin-left:auto; }
+  a.chip, button.chip { background:rgba(255,255,255,.06); border:1px solid #2B3354; border-radius:999px; padding:6px 12px; text-decoration:none; color:inherit; font-size:13px; cursor:pointer; }
+  .tools { display:flex; gap:8px; margin-left:auto; }
   .credit { position:fixed; bottom:6px; right:10px; font-size:11px; color:#666; }
 </style>
 </head>
@@ -28,7 +29,11 @@
 <canvas id="c"></canvas>
 <header class="hud">
   <div class="brand">ENGINE</div>
-  <a class="chip" href="../index.html">← Library</a>
+  <div class="tools">
+    <button class="chip" id="hide">Hide selected</button>
+    <button class="chip" id="show">Show all</button>
+    <a class="chip" href="../index.html">← Library</a>
+  </div>
 </header>
 <section class="card">
   <div class="prompt" id="prompt">Loading real engine…</div>
@@ -44,6 +49,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const canvas = document.getElementById("c");
 const prompt = document.getElementById("prompt");
 const sub = document.getElementById("sub");
+const hideBtn = document.getElementById("hide");
+const showBtn = document.getElementById("show");
 function setStatus(a, b) { prompt.textContent = a; if (b !== undefined) sub.textContent = b; }
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -69,6 +76,46 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let downPos = null;
 const partNames = new Map();
+const meshesById = new Map();
+let selectedId = null;
+let selectedMesh = null;
+
+function select(obj) {
+  if (selectedMesh) selectedMesh.material = selectedMesh.userData.origMaterial || selectedMesh.material;
+  selectedMesh = obj;
+  selectedId = obj?.userData?.id || null;
+  if (obj && obj.material) {
+    obj.userData.origMaterial = obj.material;
+    obj.material = obj.material.clone();
+    obj.material.emissive = new THREE.Color(0x442200);
+    obj.material.emissiveIntensity = 0.4;
+  }
+  const name = partNames.get(selectedId) || selectedId || "part";
+  setStatus(name, "Click Hide selected or press H to hide it");
+}
+
+function hideSelected() {
+  if (!selectedMesh) return;
+  selectedMesh.visible = false;
+  setStatus("Hidden: " + (partNames.get(selectedId) || selectedId), "Press Show all or R to restore");
+  selectedMesh = null;
+  selectedId = null;
+}
+
+function showAll() {
+  group.traverse(c => {
+    if (c.isMesh) c.visible = true;
+  });
+  setStatus("All parts shown", "Click any part to select it");
+}
+
+hideBtn.onclick = hideSelected;
+showBtn.onclick = showAll;
+
+addEventListener("keydown", e => {
+  if (e.key === "h" || e.key === "H") hideSelected();
+  if (e.key === "r" || e.key === "R") showAll();
+});
 
 canvas.addEventListener("pointerdown", e => { downPos = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener("pointerup", e => {
@@ -85,10 +132,11 @@ canvas.addEventListener("pointerup", e => {
   if (hits.length) {
     let obj = hits[0].object;
     while (obj && !obj.userData.id) obj = obj.parent;
-    const id = obj?.userData?.id;
-    const name = partNames.get(id) || id || "part";
-    setStatus(name, "id: " + (id || "unknown"));
+    if (obj) select(obj);
   } else {
+    if (selectedMesh) selectedMesh.material = selectedMesh.userData.origMaterial || selectedMesh.material;
+    selectedMesh = null;
+    selectedId = null;
     setStatus("No hit", "Click on the engine.");
   }
 });
@@ -122,7 +170,6 @@ loader.load(
   "https://engx3d.com/models/carengine.glb",
   (gltf) => {
     const model = gltf.scene;
-    // Scale if needed — models are usually in meters or mm
     model.scale.setScalar(1);
     model.position.set(0, 0, 0);
 
@@ -134,12 +181,13 @@ loader.load(
         const id = raw || "mesh_" + count;
         c.userData.id = id;
         partNames.set(id, c.name || ("Part " + count));
+        meshesById.set(id, c);
       }
     });
 
     group.add(model);
     fit();
-    setStatus("Engine ready", count + " parts · click any of them");
+    setStatus("Engine ready", count + " parts · click to select, then Hide or press H");
   },
   undefined,
   (err) => {
