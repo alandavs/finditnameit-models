@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spot the Part — Mini Game</title>
+<meta name="description" content="Quick mobile game: tap the correct engine part before time runs out.">
+<meta property="og:title" content="Spot the Part — Mini Game">
+<meta property="og:description" content="Tap the correct engine part before time runs out.">
+<meta property="og:image" content="https://engx3d.com/3d-models/img/car-engine.jpg">
+<meta property="og:url" content="https://alandavs.github.io/finditnameit-models/play/spot.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Spot the Part — Mini Game">
+<meta name="twitter:image" content="https://engx3d.com/3d-models/img/car-engine.jpg">
+<style>
+  html,body { margin:0; height:100%; background:#0A0D18; color:#EAEDF6; font-family:system-ui,sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  canvas { background:#1a1e2e; border-radius:12px; max-width:100%; touch-action:manipulation; }
+  .info { text-align:center; margin:12px; }
+  .score { font-size:24px; font-weight:700; color:#FFB547; }
+  .prompt { font-size:18px; margin:8px 0; }
+  button { background:#FFB547; color:#241500; border:none; border-radius:999px; padding:10px 20px; font-weight:700; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="info">
+  <div class="score" id="score">Score: 0</div>
+  <div class="prompt" id="prompt">Tap Start</div>
+  <button id="start">Start</button>
+</div>
+<canvas id="c" width="360" height="480"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
+const promptEl = document.getElementById("prompt");
+const startBtn = document.getElementById("start");
+
+const parts = [
+  { name: "Spark Plug", color: "#FFB547" },
+  { name: "Piston", color: "#4ADE9A" },
+  { name: "Valve", color: "#60A5FA" },
+  { name: "Crankshaft", color: "#F472B6" },
+  { name: "Turbo", color: "#FBBF24" },
+  { name: "Injector", color: "#A78BFA" }
+];
+
+let score = 0;
+let target = null;
+let items = [];
+let running = false;
+let timer = null;
+
+function rand(min, max) { return Math.random() * (max - min) + min; }
+
+function nextRound() {
+  target = parts[Math.floor(Math.random() * parts.length)];
+  promptEl.textContent = "Find: " + target.name;
+  items = [];
+  for (let i = 0; i < 6; i++) {
+    const p = parts[Math.floor(Math.random() * parts.length)];
+    items.push({
+      ...p,
+      x: rand(40, 320),
+      y: rand(60, 420),
+      r: 28
+    });
+  }
+  // ensure at least one target
+  if (!items.some(i => i.name === target.name)) {
+    items[0] = { ...target, x: rand(40, 320), y: rand(60, 420), r: 28 };
+  }
+  draw();
+}
+
+function draw() {
+  ctx.fillStyle = "#1a1e2e";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  items.forEach(it => {
+    ctx.beginPath();
+    ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2);
+    ctx.fillStyle = it.color;
+    ctx.fill();
+    ctx.fillStyle = "#0A0D18";
+    ctx.font = "12px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(it.name, it.x, it.y + 4);
+  });
+}
+
+function hit(x, y) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    const dx = x - it.x, dy = y - it.y;
+    if (dx*dx + dy*dy <= it.r*it.r) return it;
+  }
+  return null;
+}
+
+canvas.addEventListener("pointerdown", e => {
+  if (!running) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const it = hit(x, y);
+  if (it && it.name === target.name) {
+    score++;
+    scoreEl.textContent = "Score: " + score;
+    nextRound();
+  } else if (it) {
+    score = Math.max(0, score - 1);
+    scoreEl.textContent = "Score: " + score;
+    promptEl.textContent = "Wrong — try again";
+    setTimeout(nextRound, 600);
+  }
+});
+
+startBtn.onclick = () => {
+  score = 0;
+  scoreEl.textContent = "Score: 0";
+  running = true;
+  startBtn.style.display = "none";
+  nextRound();
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    running = false;
+    promptEl.textContent = "Time's up! Final score: " + score;
+    startBtn.style.display = "inline-block";
+    startBtn.textContent = "Play again";
+  }, 30000);
+};
+
+draw();
+</script>
+</body>
+</html>
