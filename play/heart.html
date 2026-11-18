@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find the Aorta — Heart Game</title>
+<meta name="description" content="Spin a heart in 3D and find the aorta.">
+<meta property="og:title" content="Find the Aorta — Heart Game">
+<meta property="og:description" content="Spin a heart in 3D and find the aorta.">
+<meta property="og:image" content="https://www.innerscene.com/api/library/heart-e9f72b0e/preview">
+<meta property="og:url" content="https://alandavs.github.io/finditnameit-models/play/heart.html">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Find the Aorta — Heart Game">
+<meta name="twitter:image" content="https://www.innerscene.com/api/library/heart-e9f72b0e/preview">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  html,body { margin:0; height:100%; background:#1a1e2e; color:#EAEDF6; font-family:system-ui,sans-serif; overflow:hidden; }
+  canvas { display:block; width:100%; height:100%; }
+  .hud { position:fixed; top:0; left:0; right:0; padding:10px 16px; background:#1a1e2e; border-bottom:1px solid #3a4060; z-index:10; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .brand { font-weight:700; color:#FFB547; }
+  .tools { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  a.chip, button.chip { background:rgba(255,255,255,.08); border:1px solid #3a4060; border-radius:999px; padding:5px 10px; text-decoration:none; color:inherit; font-size:12px; cursor:pointer; }
+  button.chip.on { background:#FFB547; color:#241500; }
+  .card { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:min(480px,90vw); background:#252a3d; border:1px solid #3a4060; border-radius:12px; padding:14px; z-index:10; text-align:center; }
+  .prompt { font-size:18px; font-weight:700; margin:0 0 4px; }
+  .sub { color:#b0b8d0; font-size:13px; }
+  .win { color:#4ADE9A; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header class="hud">
+  <div class="brand">FIND THE AORTA</div>
+  <div class="tools">
+    <button class="chip" id="hide">Hide</button>
+    <button class="chip" id="show">Show all</button>
+    <button class="chip" id="xray">X-ray</button>
+    <a class="chip" href="../index.html">Library</a>
+  </div>
+</header>
+<section class="card">
+  <div class="prompt" id="prompt">Loading heart…</div>
+  <div class="sub" id="sub">Find and tap the aorta</div>
+</section>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const canvas = document.getElementById("c");
+const prompt = document.getElementById("prompt");
+const sub = document.getElementById("sub");
+const hideBtn = document.getElementById("hide");
+const showBtn = document.getElementById("show");
+const xrayBtn = document.getElementById("xray");
+function setStatus(a, b) { prompt.textContent = a; if (b !== undefined) sub.textContent = b; }
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.4;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a3048);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const key = new THREE.DirectionalLight(0xffffff, 1.8);
+key.position.set(5, 12, 8);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xaaccff, 0.6);
+fill.position.set(-6, 4, -5);
+scene.add(fill);
+
+const group = new THREE.Group();
+scene.add(group);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let downPos = null;
+const partNames = new Map();
+const meshes = [];
+let selectedMesh = null;
+let xrayOn = false;
+let found = false;
+
+function select(obj) {
+  if (selectedMesh && selectedMesh.userData.origMat) selectedMesh.material = selectedMesh.userData.origMat;
+  selectedMesh = obj;
+  if (obj && obj.material) {
+    obj.userData.origMat = obj.material;
+    const m = obj.material.clone();
+    m.emissive = new THREE.Color(0xff8800);
+    m.emissiveIntensity = 0.5;
+    obj.material = m;
+  }
+  const name = (partNames.get(obj?.userData?.id) || obj?.name || "").toLowerCase();
+  if (name.includes("aorta") || name.includes("aortic")) {
+    found = true;
+    setStatus("Found the aorta!", "Nice");
+    prompt.classList.add("win");
+  } else {
+    setStatus(partNames.get(obj?.userData?.id) || obj?.name || "part", "Not the aorta — keep looking");
+    prompt.classList.remove("win");
+  }
+}
+
+function hideSelected() {
+  if (!selectedMesh) return;
+  selectedMesh.visible = false;
+  setStatus("Hidden", "Keep exploring");
+  selectedMesh = null;
+}
+
+function showAll() {
+  group.traverse(c => { if (c.isMesh) c.visible = true; });
+  setStatus(found ? "Found the aorta!" : "All visible", "Tap parts to inspect");
+}
+
+function toggleXray() {
+  xrayOn = !xrayOn;
+  xrayBtn.classList.toggle("on", xrayOn);
+  group.traverse(c => {
+    if (c.isMesh && c.material) {
+      if (!c.userData.origOpacity) c.userData.origOpacity = c.material.opacity ?? 1;
+      c.material.transparent = true;
+      c.material.opacity = xrayOn ? 0.35 : (c.userData.origOpacity || 1);
+      c.material.needsUpdate = true;
+    }
+  });
+}
+
+hideBtn.onclick = hideSelected;
+showBtn.onclick = showAll;
+xrayBtn.onclick = toggleXray;
+
+canvas.addEventListener("pointerdown", e => { downPos = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener("pointerup", e => {
+  if (!downPos) return;
+  const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+  downPos = null;
+  if (moved > 14) return;
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const visible = meshes.filter(m => m.visible);
+  const hits = raycaster.intersectObjects(visible, false);
+  if (hits.length) select(hits[0].object);
+});
+
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+}
+window.addEventListener("resize", resize);
+resize();
+
+function fit() {
+  const box3 = new THREE.Box3().setFromObject(group);
+  if (box3.isEmpty()) return;
+  const size = box3.getSize(new THREE.Vector3());
+  const center = box3.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.8;
+  camera.position.copy(center).add(new THREE.Vector3(dist * 0.5, dist * 0.4, dist));
+  controls.target.copy(center);
+  controls.update();
+}
+
+const loader = new GLTFLoader();
+// Using a public CC0 heart model — may need CORS or direct link adjustment
+loader.load(
+  "https://www.innerscene.com/api/library/heart-e9f72b0e/download/glb",
+  (gltf) => {
+    const model = gltf.scene;
+    group.add(model);
+    let count = 0;
+    model.traverse(c => {
+      if (c.isMesh) {
+        count++;
+        const raw = (c.name || "part_" + count).replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
+        c.userData.id = raw || "mesh_" + count;
+        partNames.set(c.userData.id, c.name || ("Part " + count));
+        meshes.push(c);
+      }
+    });
+    fit();
+    setStatus("Find the aorta", count + " parts");
+  },
+  undefined,
+  (err) => setStatus("Model load issue", "Using fallback or check console")
+);
+
+function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+}
+loop();
+</script>
+</body>
+</html>
