@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log to Lumber — Sawmill Demo</title>
+<meta name="description" content="Spin a log and see different milling cuts. Educational demo with product links.">
+<meta property="og:title" content="Log to Lumber — Sawmill Demo">
+<meta property="og:description" content="Spin a log and explore different milling cuts.">
+<meta property="og:url" content="https://alandavs.github.io/finditnameit-models/play/sawmill.html">
+<meta name="twitter:card" content="summary_large_image">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<style>
+  html,body { margin:0; height:100%; background:#1a1e2e; color:#EAEDF6; font-family:system-ui,sans-serif; overflow:hidden; }
+  canvas { display:block; width:100%; height:100%; }
+  .hud { position:fixed; top:0; left:0; right:0; padding:10px 16px; background:#1a1e2e; border-bottom:1px solid #3a4060; z-index:10; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .brand { font-weight:700; color:#FFB547; }
+  .tools { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
+  button.chip, a.chip { background:rgba(255,255,255,.08); border:1px solid #3a4060; border-radius:999px; padding:5px 10px; text-decoration:none; color:inherit; font-size:12px; cursor:pointer; }
+  button.chip.on { background:#FFB547; color:#241500; }
+  .card { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:min(520px,92vw); background:#252a3d; border:1px solid #3a4060; border-radius:12px; padding:14px; z-index:10; }
+  .prompt { font-size:18px; font-weight:700; margin:0 0 6px; }
+  .sub { color:#b0b8d0; font-size:13px; margin-bottom:8px; }
+  .cuts { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .sponsor { margin-top:8px; padding-top:8px; border-top:1px solid #3a4060; font-size:12px; color:#9AA2BF; }
+  .sponsor a { color:#FFB547; text-decoration:none; }
+  .sponsor a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header class="hud">
+  <div class="brand">LOG TO LUMBER</div>
+  <div class="tools">
+    <a class="chip" href="../index.html">Library</a>
+  </div>
+</header>
+<section class="card">
+  <div class="prompt" id="prompt">Whole Log</div>
+  <div class="sub" id="sub">Spin to inspect · Pick a cut pattern</div>
+  <div class="cuts">
+    <button class="chip on" data-cut="whole">Whole Log</button>
+    <button class="chip" data-cut="live">Live Edge</button>
+    <button class="chip" data-cut="quarter">Quarter Sawn</button>
+    <button class="chip" data-cut="plain">Plain Sawn</button>
+    <button class="chip" data-cut="boards">Boards</button>
+  </div>
+  <div class="sponsor">
+    Demo only · Related tools:
+    <a href="https://www.amazon.com/s?k=portable+sawmill" target="_blank" rel="noopener">Portable Sawmills</a> ·
+    <a href="https://www.amazon.com/s?k=wood+mill+blade" target="_blank" rel="noopener">Mill Blades</a> ·
+    <a href="https://www.amazon.com/s?k=log+splitter" target="_blank" rel="noopener">Log Splitters</a>
+  </div>
+</section>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const canvas = document.getElementById("c");
+const prompt = document.getElementById("prompt");
+const sub = document.getElementById("sub");
+const cutBtns = document.querySelectorAll(".cuts .chip");
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a3048);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.4);
+key.position.set(4, 8, 6);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xaaccff, 0.4);
+fill.position.set(-4, 2, -4);
+scene.add(fill);
+
+const group = new THREE.Group();
+scene.add(group);
+
+const wood = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.75, metalness: 0.05 });
+const endGrain = new THREE.MeshStandardMaterial({ color: 0xA67C52, roughness: 0.8 });
+const bark = new THREE.MeshStandardMaterial({ color: 0x4A3728, roughness: 0.9 });
+const cutFace = new THREE.MeshStandardMaterial({ color: 0xC4A574, roughness: 0.6 });
+
+let currentMeshes = [];
+
+function clearGroup() {
+  currentMeshes.forEach(m => group.remove(m));
+  currentMeshes = [];
+}
+
+function addMesh(geo, mat, pos = [0,0,0], rot = [0,0,0]) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(...pos);
+  m.rotation.set(...rot);
+  group.add(m);
+  currentMeshes.push(m);
+  return m;
+}
+
+function buildWhole() {
+  clearGroup();
+  const log = new THREE.CylinderGeometry(1.1, 1.1, 6, 24);
+  addMesh(log, wood, [0,0,0], [0,0,Math.PI/2]);
+  // end caps
+  addMesh(new THREE.CircleGeometry(1.1, 24), endGrain, [3,0,0], [0,Math.PI/2,0]);
+  addMesh(new THREE.CircleGeometry(1.1, 24), endGrain, [-3,0,0], [0,-Math.PI/2,0]);
+  // simple bark rings
+  for (let i = -2.5; i <= 2.5; i += 1.2) {
+    addMesh(new THREE.TorusGeometry(1.12, 0.04, 8, 16), bark, [i,0,0], [0,0,0]);
+  }
+  prompt.textContent = "Whole Log";
+  sub.textContent = "Raw log before milling";
+}
+
+function buildLive() {
+  clearGroup();
+  const slab = new THREE.BoxGeometry(5.5, 0.35, 2.2);
+  addMesh(slab, wood);
+  // irregular live edges as thin boxes
+  addMesh(new THREE.BoxGeometry(5.5, 0.35, 0.15), bark, [0,0,1.15]);
+  addMesh(new THREE.BoxGeometry(5.5, 0.35, 0.15), bark, [0,0,-1.15]);
+  prompt.textContent = "Live Edge";
+  sub.textContent = "One natural bark edge kept";
+}
+
+function buildQuarter() {
+  clearGroup();
+  // four quarter pieces
+  const q = new THREE.BoxGeometry(1.4, 0.4, 2.8);
+  addMesh(q, cutFace, [-0.75, 0.3, 0]);
+  addMesh(q, cutFace, [0.75, 0.3, 0]);
+  addMesh(q, cutFace, [-0.75, -0.3, 0]);
+  addMesh(q, cutFace, [0.75, -0.3, 0]);
+  prompt.textContent = "Quarter Sawn";
+  sub.textContent = "Radial cuts for stability";
+}
+
+function buildPlain() {
+  clearGroup();
+  for (let i = -1.2; i <= 1.2; i += 0.4) {
+    addMesh(new THREE.BoxGeometry(5, 0.28, 2.2), wood, [0, i, 0]);
+  }
+  prompt.textContent = "Plain Sawn";
+  sub.textContent = "Parallel cuts through the log";
+}
+
+function buildBoards() {
+  clearGroup();
+  const boards = [
+    [0, 0.6, 0], [0, 0.2, 0], [0, -0.2, 0], [0, -0.6, 0],
+    [1.6, 0.4, 0], [1.6, 0, 0], [1.6, -0.4, 0]
+  ];
+  boards.forEach((p, i) => {
+    const w = i < 4 ? 4.5 : 3.2;
+    addMesh(new THREE.BoxGeometry(w, 0.22, 1.1), wood, p);
+  });
+  prompt.textContent = "Boards";
+  sub.textContent = "Finished dimensional lumber";
+}
+
+const builders = {
+  whole: buildWhole,
+  live: buildLive,
+  quarter: buildQuarter,
+  plain: buildPlain,
+  boards: buildBoards
+};
+
+cutBtns.forEach(btn => {
+  btn.onclick = () => {
+    cutBtns.forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    builders[btn.dataset.cut]();
+  };
+});
+
+function resize() {
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+}
+window.addEventListener("resize", resize);
+resize();
+
+function fit() {
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.6;
+  camera.position.copy(center).add(new THREE.Vector3(dist * 0.4, dist * 0.5, dist));
+  controls.target.copy(center);
+  controls.update();
+}
+
+buildWhole();
+fit();
+
+function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  renderer.render(scene, camera);
+}
+loop();
+</script>
+</body>
+</html>
