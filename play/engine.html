@@ -5,32 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Find the Spark Plugs — Engine Game</title>
 <meta name="description" content="Spin a real car engine in 3D. Hide parts, explode it, and try to find the spark plugs. Free interactive game.">
-
-<!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Find It Name It">
 <meta property="og:url" content="https://alandavs.github.io/finditnameit-models/play/engine.html">
 <meta property="og:title" content="Find the Spark Plugs — Engine Game">
 <meta property="og:description" content="Spin a real car engine in 3D. Hide parts, explode it, and try to find the spark plugs.">
 <meta property="og:image" content="https://engx3d.com/3d-models/img/car-engine.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="900">
-<meta property="og:image:alt" content="3D cutaway car engine model">
-
-<!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Find the Spark Plugs — Engine Game">
 <meta name="twitter:description" content="Spin a real car engine in 3D. Hide parts, explode it, and try to find the spark plugs.">
 <meta name="twitter:image" content="https://engx3d.com/3d-models/img/car-engine.jpg">
-<meta name="twitter:image:alt" content="3D cutaway car engine model">
-
 <script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-  }
-}
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
 <style>
   html,body { margin:0; height:100%; background:#1a1e2e; color:#EAEDF6; font-family:system-ui,sans-serif; overflow:hidden; }
@@ -68,12 +54,12 @@
   <div class="share" id="sharehint">Tap Share to copy the link</div>
 </section>
 <div class="credit">Model: Engine-X by Parth Parmar (engx3d.com) · CC BY-NC 4.0</div>
-
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-
+import { initMonetize } from "../shared/monetize.js";
+initMonetize("engine");
 const canvas = document.getElementById("c");
 const prompt = document.getElementById("prompt");
 const sub = document.getElementById("sub");
@@ -84,7 +70,6 @@ const explodeSlider = document.getElementById("explode");
 const shareBtn = document.getElementById("share");
 const shareHint = document.getElementById("sharehint");
 function setStatus(a, b) { prompt.textContent = a; if (b !== undefined) sub.textContent = b; }
-
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -94,7 +79,6 @@ scene.background = new THREE.Color(0x2a3048);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
-
 scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 const key = new THREE.DirectionalLight(0xffffff, 1.8);
 key.position.set(5, 12, 8);
@@ -102,13 +86,8 @@ scene.add(key);
 const fill = new THREE.DirectionalLight(0xaaccff, 0.6);
 fill.position.set(-6, 4, -5);
 scene.add(fill);
-const rim = new THREE.DirectionalLight(0xffcc88, 0.5);
-rim.position.set(0, -3, 6);
-scene.add(rim);
-
 const group = new THREE.Group();
 scene.add(group);
-
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let downPos = null;
@@ -118,7 +97,6 @@ let selectedMesh = null;
 let xrayOn = false;
 const originalPositions = new Map();
 let found = false;
-
 function select(obj) {
   if (selectedMesh && selectedMesh.userData.origMat) selectedMesh.material = selectedMesh.userData.origMat;
   selectedMesh = obj;
@@ -139,19 +117,8 @@ function select(obj) {
     prompt.classList.remove("win");
   }
 }
-
-function hideSelected() {
-  if (!selectedMesh) return;
-  selectedMesh.visible = false;
-  setStatus("Hidden", "Show all or keep exploring");
-  selectedMesh = null;
-}
-
-function showAll() {
-  group.traverse(c => { if (c.isMesh) c.visible = true; });
-  setStatus(found ? "Found the spark plugs!" : "All visible", "Tap parts to inspect");
-}
-
+function hideSelected() { if (!selectedMesh) return; selectedMesh.visible = false; setStatus("Hidden", "Show all or keep exploring"); selectedMesh = null; }
+function showAll() { group.traverse(c => { if (c.isMesh) c.visible = true; }); setStatus(found ? "Found the spark plugs!" : "All visible", "Tap parts to inspect"); }
 function toggleXray() {
   xrayOn = !xrayOn;
   xrayBtn.classList.toggle("on", xrayOn);
@@ -164,7 +131,6 @@ function toggleXray() {
     }
   });
 }
-
 function explode(amount) {
   const t = amount / 100;
   meshes.forEach(m => {
@@ -175,28 +141,15 @@ function explode(amount) {
     m.position.copy(orig).add(dir.multiplyScalar(t * 1.5));
   });
 }
-
 hideBtn.onclick = hideSelected;
 showBtn.onclick = showAll;
 xrayBtn.onclick = toggleXray;
 explodeSlider.oninput = e => explode(+e.target.value);
-
 shareBtn.onclick = async () => {
   const url = location.href;
-  try {
-    await navigator.clipboard.writeText(url);
-    shareHint.textContent = "Link copied — paste it anywhere";
-  } catch {
-    shareHint.textContent = url;
-  }
+  try { await navigator.clipboard.writeText(url); shareHint.textContent = "Link copied — paste it anywhere"; }
+  catch { shareHint.textContent = url; }
 };
-
-addEventListener("keydown", e => {
-  if (e.key === "h" || e.key === "H") hideSelected();
-  if (e.key === "r" || e.key === "R") showAll();
-  if (e.key === "x" || e.key === "X") toggleXray();
-});
-
 canvas.addEventListener("pointerdown", e => { downPos = { x: e.clientX, y: e.clientY }; });
 canvas.addEventListener("pointerup", e => {
   if (!downPos) return;
@@ -211,7 +164,6 @@ canvas.addEventListener("pointerup", e => {
   const hits = raycaster.intersectObjects(visible, false);
   if (hits.length) select(hits[0].object);
 });
-
 function resize() {
   const w = canvas.clientWidth || window.innerWidth;
   const h = canvas.clientHeight || window.innerHeight;
@@ -221,7 +173,6 @@ function resize() {
 }
 window.addEventListener("resize", resize);
 resize();
-
 function fit() {
   const box3 = new THREE.Box3().setFromObject(group);
   if (box3.isEmpty()) return;
@@ -233,9 +184,7 @@ function fit() {
   controls.target.copy(center);
   controls.update();
 }
-
 setStatus("Loading engine…", "Find and tap the spark plugs");
-
 const loader = new GLTFLoader();
 loader.load(
   "https://engx3d.com/models/carengine.glb",
@@ -259,7 +208,6 @@ loader.load(
   undefined,
   (err) => setStatus("Load failed", String(err))
 );
-
 function loop() {
   requestAnimationFrame(loop);
   controls.update();
