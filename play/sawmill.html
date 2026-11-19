@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Log to Lumber — Sawmill Demo</title>
-<meta name="description" content="Spin a log and see different milling cuts. Educational demo with product links.">
+<meta name="description" content="Explore real log milling cuts and quiz yourself.">
 <meta property="og:title" content="Log to Lumber — Sawmill Demo">
-<meta property="og:description" content="Spin a log and explore different milling cuts.">
+<meta property="og:description" content="Spin a log and learn different milling cuts.">
 <meta property="og:url" content="https://alandavs.github.io/finditnameit-models/play/sawmill.html">
 <meta name="twitter:card" content="summary_large_image">
 <script type="importmap">
@@ -20,13 +20,14 @@
   .tools { display:flex; gap:6px; margin-left:auto; flex-wrap:wrap; }
   button.chip, a.chip { background:rgba(255,255,255,.08); border:1px solid #3a4060; border-radius:999px; padding:5px 10px; text-decoration:none; color:inherit; font-size:12px; cursor:pointer; }
   button.chip.on { background:#FFB547; color:#241500; }
-  .card { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:min(520px,92vw); background:#252a3d; border:1px solid #3a4060; border-radius:12px; padding:14px; z-index:10; }
-  .prompt { font-size:18px; font-weight:700; margin:0 0 6px; }
+  .card { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); width:min(540px,92vw); background:#252a3d; border:1px solid #3a4060; border-radius:12px; padding:14px; z-index:10; }
+  .prompt { font-size:18px; font-weight:700; margin:0 0 4px; }
   .sub { color:#b0b8d0; font-size:13px; margin-bottom:8px; }
   .cuts { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .quiz { margin-top:8px; }
+  .quiz button { margin:2px; }
   .sponsor { margin-top:8px; padding-top:8px; border-top:1px solid #3a4060; font-size:12px; color:#9AA2BF; }
   .sponsor a { color:#FFB547; text-decoration:none; }
-  .sponsor a:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -34,24 +35,31 @@
 <header class="hud">
   <div class="brand">LOG TO LUMBER</div>
   <div class="tools">
+    <button class="chip" id="quizBtn">Quiz</button>
     <a class="chip" href="../index.html">Library</a>
   </div>
 </header>
 <section class="card">
   <div class="prompt" id="prompt">Whole Log</div>
-  <div class="sub" id="sub">Spin to inspect · Pick a cut pattern</div>
-  <div class="cuts">
+  <div class="sub" id="sub">Spin to inspect · Select a cut pattern</div>
+  <div class="cuts" id="cuts">
     <button class="chip on" data-cut="whole">Whole Log</button>
-    <button class="chip" data-cut="live">Live Edge</button>
-    <button class="chip" data-cut="quarter">Quarter Sawn</button>
+    <button class="chip" data-cut="live">Live (Through & Through)</button>
+    <button class="chip" data-cut="cant">Cant Sawing</button>
+    <button class="chip" data-cut="grade">Sawing for Grade</button>
+    <button class="chip" data-cut="radial">Radial / Quarter</button>
+    <button class="chip" data-cut="dimension">Dimension Lumber</button>
     <button class="chip" data-cut="plain">Plain Sawn</button>
-    <button class="chip" data-cut="boards">Boards</button>
+  </div>
+  <div class="quiz" id="quiz" style="display:none;">
+    <div id="qtext"></div>
+    <div id="qopts"></div>
+    <div id="qresult"></div>
   </div>
   <div class="sponsor">
-    Demo only · Related tools:
+    Demo · Related:
     <a href="https://www.amazon.com/s?k=portable+sawmill" target="_blank" rel="noopener">Portable Sawmills</a> ·
-    <a href="https://www.amazon.com/s?k=wood+mill+blade" target="_blank" rel="noopener">Mill Blades</a> ·
-    <a href="https://www.amazon.com/s?k=log+splitter" target="_blank" rel="noopener">Log Splitters</a>
+    <a href="https://www.amazon.com/s?k=wood+mill+blade" target="_blank" rel="noopener">Mill Blades</a>
   </div>
 </section>
 
@@ -62,7 +70,12 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const canvas = document.getElementById("c");
 const prompt = document.getElementById("prompt");
 const sub = document.getElementById("sub");
-const cutBtns = document.querySelectorAll(".cuts .chip");
+const cutsDiv = document.getElementById("cuts");
+const quizDiv = document.getElementById("quiz");
+const quizBtn = document.getElementById("quizBtn");
+const qtext = document.getElementById("qtext");
+const qopts = document.getElementById("qopts");
+const qresult = document.getElementById("qresult");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -78,110 +91,111 @@ scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 const key = new THREE.DirectionalLight(0xffffff, 1.4);
 key.position.set(4, 8, 6);
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xaaccff, 0.4);
-fill.position.set(-4, 2, -4);
-scene.add(fill);
 
 const group = new THREE.Group();
 scene.add(group);
 
-const wood = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.75, metalness: 0.05 });
+const wood = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.75 });
 const endGrain = new THREE.MeshStandardMaterial({ color: 0xA67C52, roughness: 0.8 });
 const bark = new THREE.MeshStandardMaterial({ color: 0x4A3728, roughness: 0.9 });
-const cutFace = new THREE.MeshStandardMaterial({ color: 0xC4A574, roughness: 0.6 });
+const cut = new THREE.MeshStandardMaterial({ color: 0xC4A574, roughness: 0.6 });
 
-let currentMeshes = [];
-
-function clearGroup() {
-  currentMeshes.forEach(m => group.remove(m));
-  currentMeshes = [];
-}
-
-function addMesh(geo, mat, pos = [0,0,0], rot = [0,0,0]) {
+let current = [];
+function clear() { current.forEach(m => group.remove(m)); current = []; }
+function add(geo, mat, pos=[0,0,0], rot=[0,0,0]) {
   const m = new THREE.Mesh(geo, mat);
-  m.position.set(...pos);
-  m.rotation.set(...rot);
-  group.add(m);
-  currentMeshes.push(m);
-  return m;
+  m.position.set(...pos); m.rotation.set(...rot);
+  group.add(m); current.push(m);
 }
 
-function buildWhole() {
-  clearGroup();
-  const log = new THREE.CylinderGeometry(1.1, 1.1, 6, 24);
-  addMesh(log, wood, [0,0,0], [0,0,Math.PI/2]);
-  // end caps
-  addMesh(new THREE.CircleGeometry(1.1, 24), endGrain, [3,0,0], [0,Math.PI/2,0]);
-  addMesh(new THREE.CircleGeometry(1.1, 24), endGrain, [-3,0,0], [0,-Math.PI/2,0]);
-  // simple bark rings
-  for (let i = -2.5; i <= 2.5; i += 1.2) {
-    addMesh(new THREE.TorusGeometry(1.12, 0.04, 8, 16), bark, [i,0,0], [0,0,0]);
-  }
+function whole() {
+  clear();
+  add(new THREE.CylinderGeometry(1.1, 1.1, 6, 32), wood, [0,0,0], [0,0,Math.PI/2]);
+  add(new THREE.CircleGeometry(1.1, 32), endGrain, [3,0,0], [0,Math.PI/2,0]);
+  add(new THREE.CircleGeometry(1.1, 32), endGrain, [-3,0,0], [0,-Math.PI/2,0]);
   prompt.textContent = "Whole Log";
-  sub.textContent = "Raw log before milling";
+  sub.textContent = "Raw log, bark on, ready to mill";
 }
-
-function buildLive() {
-  clearGroup();
-  const slab = new THREE.BoxGeometry(5.5, 0.35, 2.2);
-  addMesh(slab, wood);
-  // irregular live edges as thin boxes
-  addMesh(new THREE.BoxGeometry(5.5, 0.35, 0.15), bark, [0,0,1.15]);
-  addMesh(new THREE.BoxGeometry(5.5, 0.35, 0.15), bark, [0,0,-1.15]);
-  prompt.textContent = "Live Edge";
-  sub.textContent = "One natural bark edge kept";
+function live() {
+  clear();
+  add(new THREE.BoxGeometry(5.8, 0.4, 2.3), wood);
+  add(new THREE.BoxGeometry(5.8, 0.4, 0.2), bark, [0,0,1.2]);
+  add(new THREE.BoxGeometry(5.8, 0.4, 0.2), bark, [0,0,-1.2]);
+  prompt.textContent = "Live (Through & Through)";
+  sub.textContent = "Slab with natural bark edges kept";
 }
-
-function buildQuarter() {
-  clearGroup();
-  // four quarter pieces
-  const q = new THREE.BoxGeometry(1.4, 0.4, 2.8);
-  addMesh(q, cutFace, [-0.75, 0.3, 0]);
-  addMesh(q, cutFace, [0.75, 0.3, 0]);
-  addMesh(q, cutFace, [-0.75, -0.3, 0]);
-  addMesh(q, cutFace, [0.75, -0.3, 0]);
-  prompt.textContent = "Quarter Sawn";
-  sub.textContent = "Radial cuts for stability";
+function cant() {
+  clear();
+  add(new THREE.BoxGeometry(5.5, 1.6, 1.8), wood);
+  add(new THREE.BoxGeometry(5.5, 0.3, 1.8), cut, [0,0.95,0]);
+  add(new THREE.BoxGeometry(5.5, 0.3, 1.8), cut, [0,-0.95,0]);
+  prompt.textContent = "Cant Sawing";
+  sub.textContent = "Squared cant with outer slabs removed";
 }
-
-function buildPlain() {
-  clearGroup();
-  for (let i = -1.2; i <= 1.2; i += 0.4) {
-    addMesh(new THREE.BoxGeometry(5, 0.28, 2.2), wood, [0, i, 0]);
-  }
+function grade() {
+  clear();
+  for (let i = -0.8; i <= 0.8; i += 0.4) add(new THREE.BoxGeometry(5.2, 0.25, 2.0), wood, [0,i,0]);
+  prompt.textContent = "Sawing for Grade";
+  sub.textContent = "Selective cuts to maximize clear boards";
+}
+function radial() {
+  clear();
+  const q = new THREE.BoxGeometry(1.6, 0.35, 2.6);
+  add(q, cut, [-0.85, 0.4, 0]);
+  add(q, cut, [0.85, 0.4, 0]);
+  add(q, cut, [-0.85, -0.4, 0]);
+  add(q, cut, [0.85, -0.4, 0]);
+  prompt.textContent = "Radial / Quarter Sawn";
+  sub.textContent = "Cuts that show radial grain for stability";
+}
+function dimension() {
+  clear();
+  const sizes = [[4.5,0.22,1.0],[4.0,0.22,0.9],[3.5,0.22,0.8],[3.0,0.22,0.7]];
+  sizes.forEach((s,i) => add(new THREE.BoxGeometry(...s), wood, [0, 0.6 - i*0.35, 0]));
+  prompt.textContent = "Dimension Lumber";
+  sub.textContent = "Standard sized boards (2x4, 2x6 style)";
+}
+function plain() {
+  clear();
+  for (let i = -1.0; i <= 1.0; i += 0.35) add(new THREE.BoxGeometry(5.4, 0.28, 2.2), wood, [0,i,0]);
   prompt.textContent = "Plain Sawn";
-  sub.textContent = "Parallel cuts through the log";
+  sub.textContent = "Parallel flat cuts through the log";
 }
 
-function buildBoards() {
-  clearGroup();
-  const boards = [
-    [0, 0.6, 0], [0, 0.2, 0], [0, -0.2, 0], [0, -0.6, 0],
-    [1.6, 0.4, 0], [1.6, 0, 0], [1.6, -0.4, 0]
-  ];
-  boards.forEach((p, i) => {
-    const w = i < 4 ? 4.5 : 3.2;
-    addMesh(new THREE.BoxGeometry(w, 0.22, 1.1), wood, p);
-  });
-  prompt.textContent = "Boards";
-  sub.textContent = "Finished dimensional lumber";
-}
+const builders = { whole, live, cant, grade, radial, dimension, plain };
 
-const builders = {
-  whole: buildWhole,
-  live: buildLive,
-  quarter: buildQuarter,
-  plain: buildPlain,
-  boards: buildBoards
-};
-
-cutBtns.forEach(btn => {
+cutsDiv.querySelectorAll("button").forEach(btn => {
   btn.onclick = () => {
-    cutBtns.forEach(b => b.classList.remove("on"));
+    cutsDiv.querySelectorAll("button").forEach(b => b.classList.remove("on"));
     btn.classList.add("on");
     builders[btn.dataset.cut]();
   };
 });
+
+const questions = [
+  { q: "Which cut keeps the natural bark edges?", a: "Live (Through & Through)", opts: ["Live (Through & Through)", "Cant Sawing", "Plain Sawn", "Dimension Lumber"] },
+  { q: "Which method produces the most stable boards with radial grain?", a: "Radial / Quarter Sawn", opts: ["Radial / Quarter Sawn", "Plain Sawn", "Cant Sawing", "Sawing for Grade"] },
+  { q: "What is a squared center piece called after outer slabs are removed?", a: "Cant", opts: ["Cant", "Live edge", "Dimension", "Quarter"] },
+  { q: "Which approach prioritizes clear, high-value boards?", a: "Sawing for Grade", opts: ["Sawing for Grade", "Plain Sawn", "Dimension Lumber", "Live"] }
+];
+let qi = 0;
+function showQ() {
+  if (qi >= questions.length) { qtext.textContent = "Quiz done!"; qopts.innerHTML = ""; qresult.textContent = ""; return; }
+  const item = questions[qi];
+  qtext.textContent = item.q;
+  qopts.innerHTML = item.opts.map(o => `<button class="chip" data-a="${o}">${o}</button>`).join("");
+  qresult.textContent = "";
+  qopts.querySelectorAll("button").forEach(b => b.onclick = () => {
+    const ok = b.dataset.a === item.a;
+    qresult.textContent = ok ? "Correct" : "Try again";
+    qresult.style.color = ok ? "#4ADE9A" : "#FFB547";
+    if (ok) { qi++; setTimeout(showQ, 600); }
+  });
+}
+quizBtn.onclick = () => {
+  quizDiv.style.display = quizDiv.style.display === "none" ? "block" : "none";
+  if (quizDiv.style.display === "block") { qi = 0; showQ(); }
+};
 
 function resize() {
   const w = canvas.clientWidth || window.innerWidth;
@@ -199,13 +213,13 @@ function fit() {
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
-  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.6;
+  const dist = maxDim / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.7;
   camera.position.copy(center).add(new THREE.Vector3(dist * 0.4, dist * 0.5, dist));
   controls.target.copy(center);
   controls.update();
 }
 
-buildWhole();
+whole();
 fit();
 
 function loop() {
